@@ -9,13 +9,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="theme-color" content="#020617">
 
-    <!-- CHARGEMENT CLASSIQUE (CDN) POUR COMPATIBILITÉ TOTALE SAFARI/iOS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- CHARGEMENT REACT -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     
-    <!-- Configuration React pour Lucide -->
-    <script>window.react = window.React;</script>
-    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
+    <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS) POUR ÉVITER TOUT CRASH SUR SAFARI iOS -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Firebase Officiel (Version Compatibilité Globale) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -26,7 +25,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-      body { background-color: #020617; /* Sécurité pour éviter le fond clair si crash */ }
+      body { background-color: #020617; }
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
@@ -50,65 +49,69 @@
     <div id="root"></div>
 
     <script type="text/babel">
-// Extraction des librairies (Compatibilité Safari)
+// Extraction des librairies React
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 const { createRoot } = ReactDOM;
 
-// --- SYSTÈME ANTI-CRASH POUR LES ICÔNES (FALLBACK) ---
-// Si Safari bloque l'importation de Lucide, l'application utilisera des emojis au lieu d'afficher un écran bleu.
-const L = window.lucideReact || window.LucideReact || {};
-const safeIcon = (Component, FallbackEmoji) => Component ? Component : () => <span>{FallbackEmoji}</span>;
+// --- SYSTÈME D'ICÔNES 100% INCASSABLE (CSS Uniquement, AUCUN crash JS possible) ---
+const createIcon = (iconClass) => ({ size = 24, className = "" }) => {
+  const sz = typeof size === 'number' ? size + 'px' : size;
+  return <i className={`${iconClass} ${className} flex items-center justify-center leading-none`} style={{ fontSize: sz, width: sz, height: sz }}></i>;
+};
 
-const FileText = safeIcon(L.FileText, '📄');
-const Search = safeIcon(L.Search, '🔍');
-const Plus = safeIcon(L.Plus, '➕');
-const Network = safeIcon(L.Network, '🕸️');
-const Trash2 = safeIcon(L.Trash2, '🗑️');
-const Trash = safeIcon(L.Trash, '🗑️');
-const Menu = safeIcon(L.Menu, '☰');
-const X = safeIcon(L.X, '❌');
-const Folder = safeIcon(L.Folder, '📁');
-const FolderOpen = safeIcon(L.FolderOpen, '📂');
-const Save = safeIcon(L.Save, '💾');
-const Cloud = safeIcon(L.Cloud, '☁️');
-const CloudOff = safeIcon(L.CloudOff, '🌩️');
-const SidebarClose = safeIcon(L.SidebarClose, '⇥');
-const SidebarOpen = safeIcon(L.SidebarOpen, '⇤');
-const ChevronRight = safeIcon(L.ChevronRight, '▶');
-const ChevronDown = safeIcon(L.ChevronDown, '▼');
-const ZoomIn = safeIcon(L.ZoomIn, '🔍+');
-const ZoomOut = safeIcon(L.ZoomOut, '🔍-');
-const Maximize = safeIcon(L.Maximize, '🔲');
-const Target = safeIcon(L.Target, '🎯');
-const CornerDownRight = safeIcon(L.CornerDownRight, '↘');
-const AlignLeft = safeIcon(L.AlignLeft, '≣');
-const BookOpen = safeIcon(L.BookOpen, '📖');
-const Bold = safeIcon(L.Bold, 'B');
-const Italic = safeIcon(L.Italic, 'I');
-const Underline = safeIcon(L.Underline, 'U');
-const ListIcon = safeIcon(L.List, '•');
-const ListOrdered = safeIcon(L.ListOrdered, '1.');
-const Heading1 = safeIcon(L.Heading1, 'H1');
-const Heading2 = safeIcon(L.Heading2, 'H2');
-const Heading3 = safeIcon(L.Heading3, 'H3');
-const CheckSquare = safeIcon(L.CheckSquare, '☑');
-const RefreshCw = safeIcon(L.RefreshCw, '🔄');
-const Feather = safeIcon(L.Feather, '🪶');
-const Settings = safeIcon(L.Settings, '⚙️');
-const Type = safeIcon(L.Type, 'T');
-const Edit3 = safeIcon(L.Edit3, '✏️');
-const LinkIcon = safeIcon(L.Link, '🔗');
-const Info = safeIcon(L.Info, 'ℹ️');
-const Quote = safeIcon(L.Quote, '❞');
-const Undo = safeIcon(L.Undo, '↩');
-const Redo = safeIcon(L.Redo, '↪');
-const Lock = safeIcon(L.Lock, '🔒');
-const Unlock = safeIcon(L.Unlock, '🔓');
-const Calendar = safeIcon(L.Calendar, '📅');
-const UserIcon = safeIcon(L.User, '👤');
-const LogOut = safeIcon(L.LogOut, '🚪');
-const Mail = safeIcon(L.Mail, '✉️');
-const RotateCcw = safeIcon(L.RotateCcw, '↺');
+const FileText = createIcon('ph ph-file-text');
+const Search = createIcon('ph ph-magnifying-glass');
+const Plus = createIcon('ph ph-plus');
+const Network = createIcon('ph ph-graph');
+const Trash2 = createIcon('ph ph-trash');
+const Trash = createIcon('ph ph-trash');
+const Menu = createIcon('ph ph-list');
+const X = createIcon('ph ph-x');
+const Folder = createIcon('ph ph-folder');
+const FolderOpen = createIcon('ph ph-folder-open');
+const Save = createIcon('ph ph-floppy-disk');
+const Cloud = createIcon('ph ph-cloud');
+const CloudOff = createIcon('ph ph-cloud-slash');
+const SidebarClose = createIcon('ph ph-sidebar-simple');
+const SidebarOpen = createIcon('ph ph-list');
+const ChevronRight = createIcon('ph ph-caret-right');
+const ChevronDown = createIcon('ph ph-caret-down');
+const ZoomIn = createIcon('ph ph-magnifying-glass-plus');
+const ZoomOut = createIcon('ph ph-magnifying-glass-minus');
+const Maximize = createIcon('ph ph-corners-out');
+const Target = createIcon('ph ph-target');
+const CornerDownRight = createIcon('ph ph-arrow-bend-down-right');
+const AlignLeft = createIcon('ph ph-text-align-left');
+const BookOpen = createIcon('ph ph-book-open-text');
+const Bold = createIcon('ph ph-text-b');
+const Italic = createIcon('ph ph-text-italic');
+const Underline = createIcon('ph ph-text-underline');
+const ListIcon = createIcon('ph ph-list-bullets');
+const ListOrdered = createIcon('ph ph-list-numbers');
+const Heading1 = createIcon('ph ph-text-h-one');
+const Heading2 = createIcon('ph ph-text-h-two');
+const Heading3 = createIcon('ph ph-text-h-three');
+const CheckSquare = createIcon('ph ph-check-square');
+const RefreshCw = createIcon('ph ph-arrows-clockwise');
+const Feather = createIcon('ph ph-feather');
+const Settings = createIcon('ph ph-gear');
+const Type = createIcon('ph ph-text-t');
+const Edit3 = createIcon('ph ph-pencil-simple');
+const LinkIcon = createIcon('ph ph-link');
+const Info = createIcon('ph ph-info');
+const Quote = createIcon('ph ph-quotes');
+const Undo = createIcon('ph ph-arrow-u-up-left');
+const Redo = createIcon('ph ph-arrow-u-up-right');
+const Lock = createIcon('ph ph-lock-key');
+const Unlock = createIcon('ph ph-lock-key-open');
+const Calendar = createIcon('ph ph-calendar');
+const Palette = createIcon('ph ph-palette');
+const Grid = createIcon('ph ph-squares-four');
+const UserIcon = createIcon('ph ph-user');
+const LogOut = createIcon('ph ph-sign-out');
+const Mail = createIcon('ph ph-envelope-simple');
+const RotateCcw = createIcon('ph ph-clock-counter-clockwise');
+const AlertTriangle = createIcon('ph ph-warning');
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -194,7 +197,7 @@ function useOnClickOutside(ref, handler) {
 // --- FIREBASE SETUP ---
 let app, auth, db, appId;
 try {
-  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS POUR ACTIVER LE CLOUD ⚠️
+  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS (FACULTATIF POUR LE MODE LOCAL) ⚠️
   const firebaseConfig = {
     apiKey: "VOTRE_CLE_API_ICI",
     authDomain: "votre-projet.firebaseapp.com",
@@ -225,7 +228,7 @@ const AuthScreen = ({ onGuestLogin }) => {
   const handleAuth = async (e) => {
     e.preventDefault();
     if (!auth) {
-      setError("Firebase n'est pas configuré. Veuillez utiliser le Mode Invité ci-dessous.");
+      setError("Firebase n'est pas configuré. Veuillez utiliser le Mode Invité ci-dessous pour tester l'application.");
       return;
     }
     setLoading(true);
@@ -248,7 +251,7 @@ const AuthScreen = ({ onGuestLogin }) => {
       <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden flex flex-col">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
         <div className="text-center mb-8">
-          <Feather size={48} className="mx-auto mb-4 text-teal-500/40" strokeWidth={1.5} />
+          <Feather size={48} className="mx-auto mb-4 text-teal-500/40" />
           <h2 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">Erza Spark</h2>
           <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté.</p>
         </div>
@@ -298,7 +301,7 @@ const AuthScreen = ({ onGuestLogin }) => {
 };
 
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local Ajouté :</strong> Vous pouvez tester l\'application sans créer de compte !</li><li><strong>Système Anti-Crash iOS :</strong> Si les icônes ne se chargent pas sur un ancien Safari, des émojis élégants prendront le relai. Plus aucun fond bleu !</li><li><strong>Authentification Optionnelle :</strong> Vos données peuvent être sauvegardées dans le Cloud ou sur l\'appareil.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est officiellement opérationnel, sans le moindre crash.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local :</strong> Vous êtes libre d\'utiliser l\'application sans compte !</li><li><strong>Système Anti-Crash iOS :</strong> L\'application utilise désormais les Phosphor Icons pour assurer une compatibilité totale sur les anciens Safari. Plus aucun écran bleu !</li><li><strong>Corbeille & Mot de passe :</strong> Tout est opérationnel.</li></ul>';
 
 const initialNotes = [
   {
@@ -1078,6 +1081,7 @@ function MainApp({ user, onLogout }) {
   }, [activeNoteId]);
 
   const deleteNote = (id) => {
+    // Soft Delete
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
     setSyncStatus('saving');
     if (activeNoteId === id) setActiveNoteId(null);
@@ -1343,7 +1347,7 @@ function MainApp({ user, onLogout }) {
 
           {sidebarTab === 'trash' && (
              <div className="text-center p-5 text-slate-500 text-sm bg-slate-950 rounded-2xl border border-slate-800 shadow-inner">
-               <Trash className="mx-auto mb-3 text-rose-500 opacity-50" size={32} />
+               <Trash size={32} className="mx-auto mb-3 text-rose-500 opacity-50" />
                <p className="font-serif italic mb-4">Éléments supprimés ({trashNotes.length})</p>
                <div className="space-y-2">
                  {trashNotes.map(n => (
@@ -1627,7 +1631,7 @@ function MainApp({ user, onLogout }) {
             <div className="flex-1 flex flex-col items-center justify-center text-slate-500 px-4 font-sans bg-slate-950">
               <div className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-col items-center text-center max-w-md w-full relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-purple-500"></div>
-                <Feather size={56} className="mb-6 text-teal-500/40" strokeWidth={1.5} />
+                <Feather size={56} className="mb-6 text-teal-500/40" />
                 <h2 className="text-3xl font-serif font-bold text-white mb-3 tracking-wide">Erza Spark</h2>
                 <p className="text-sm text-slate-400 mb-8 leading-relaxed font-medium">L'élégance de la pensée structurée. Second Cerveau connecté.</p>
                 <div className="flex flex-col gap-3 w-full">
@@ -1708,8 +1712,7 @@ class ErrorBoundary extends React.Component {
   resetApp = () => { this.setState({ hasError: false, error: null }); }
   
   render() {
-379462215469             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
-            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
+1:379462215469:web:2c12802420c76b644d15a4            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
             <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">{this.state.error?.toString() || 'Erreur interne'}</p>
             <button onClick={this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
               <RefreshCw size={18}/> Recharger Erza Spark
