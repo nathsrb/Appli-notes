@@ -1,4 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ezra Park</title>
+    
+    <!-- Tailwind CSS pour le design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <meta name="theme-color" content="#020617">
+
+    <!-- Configuration des modules modernes (React, Lucide, Firebase) -->
+    <script>window.process = { env: { NODE_ENV: 'production' } };</script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.292.0",
+          "firebase/app": "https://esm.sh/firebase@10.7.1/app",
+          "firebase/auth": "https://esm.sh/firebase@10.7.1/auth",
+          "firebase/firestore": "https://esm.sh/firebase@10.7.1/firestore"
+        }
+      }
+    </script>
+    
+    <!-- Compilateur JSX intégré -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+      ::selection { background-color: rgba(20, 184, 166, 0.3); color: white; }
+      
+      .ezra-editor { padding-bottom: 200px; }
+      .ezra-editor h1 { font-family: ui-serif, Georgia, serif; font-size: 2.5em; font-weight: 800; margin-top: 1em; margin-bottom: 0.5em; letter-spacing: -0.02em; color: white; }
+      .ezra-editor h2 { font-family: ui-serif, Georgia, serif; font-size: 1.8em; font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.5); padding-bottom: 0.2em; }
+      .ezra-editor h3 { font-family: ui-serif, Georgia, serif; font-size: 1.4em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: #e2e8f0; }
+      .ezra-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+      .ezra-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+      .ezra-editor li { margin-bottom: 0.3em; }
+      .ezra-editor p { margin-bottom: 0.8em; }
+      .ezra-editor blockquote { border-left: 4px solid #14b8a6; padding-left: 1em; margin: 1em 0; font-style: italic; color: #94a3b8; background: rgba(20,184,166,0.05); padding: 0.5em 1em; border-radius: 0 8px 8px 0; font-family: ui-serif, Georgia, serif; font-size: 1.1em;}
+      .ezra-editor strong, .ezra-editor b { color: white; font-weight: 700; }
+      .ezra-editor:empty:before { content: attr(placeholder); color: #475569; pointer-events: none; display: block; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-300 m-0 p-0 overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 import { 
   FileText, Search, Plus, Network, Trash2, Menu, X, Folder, Save, Cloud, CloudOff, 
   SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, 
@@ -16,14 +71,7 @@ const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const stripHtml = (html) => {
   if (!html) return '';
-  return html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/p>/gi, ' ')
-    .replace(/<\/h[1-6]>/gi, ' ')
-    .replace(/<[^>]*>?/gm, '') 
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ') 
-    .trim();
+  return html.replace(/<br\s*\/?>/gi, ' ').replace(/<\/p>/gi, ' ').replace(/<\/h[1-6]>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
 const highlightTitle = (title, query) => {
@@ -31,9 +79,7 @@ const highlightTitle = (title, query) => {
   try {
     const safeQuery = escapeRegExp(query);
     return title.replace(new RegExp(`(${safeQuery})`, 'gi'), '<mark class="bg-teal-500/40 text-teal-100 rounded px-0.5 shadow-sm">$1</mark>');
-  } catch (e) {
-    return title;
-  }
+  } catch (e) { return title; }
 };
 
 const applyHighlightsSafe = (html, query) => {
@@ -48,9 +94,7 @@ const applyHighlightsSafe = (html, query) => {
       }
     }
     return parts.join('');
-  } catch(e) {
-    return html;
-  }
+  } catch(e) { return html; }
 };
 
 const stripHighlightsSafe = (html) => {
@@ -63,23 +107,17 @@ const getSnippet = (plainText, query) => {
   try {
     const lowerText = plainText.toLowerCase();
     const lowerQuery = query.toLowerCase();
-    
     const index = lowerText.indexOf(lowerQuery);
     if (index === -1) return null;
-
     const windowSize = 25; 
     const start = Math.max(0, index - windowSize);
     const end = Math.min(plainText.length, index + query.length + windowSize);
-    
     let snippet = plainText.substring(start, end);
     if (start > 0) snippet = "..." + snippet;
     if (end < plainText.length) snippet = snippet + "...";
-
     const safeQuery = escapeRegExp(query);
     return snippet.replace(new RegExp(`(${safeQuery})`, 'gi'), '<mark class="text-teal-100 bg-teal-500/60 px-1 rounded shadow-sm font-bold">$1</mark>');
-  } catch(e) {
-    return null;
-  }
+  } catch(e) { return null; }
 };
 
 const extractLinks = (content) => {
@@ -87,13 +125,9 @@ const extractLinks = (content) => {
   const links = [];
   const regex1 = /data-link="([^"]+)"/g;
   let match;
-  while ((match = regex1.exec(content)) !== null) {
-      links.push(match[1]);
-  }
+  while ((match = regex1.exec(content)) !== null) links.push(match[1]);
   const regex2 = /\[\[(.*?)\]\]/g;
-  while ((match = regex2.exec(content)) !== null) {
-      links.push(match[1]);
-  }
+  while ((match = regex2.exec(content)) !== null) links.push(match[1]);
   return [...new Set(links)]; 
 };
 
@@ -101,9 +135,7 @@ const extractLinks = (content) => {
 function useOnClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (event) => {
-      if (!ref.current || ref.current.contains(event.target)) {
-        return;
-      }
+      if (!ref.current || ref.current.contains(event.target)) return;
       handler(event);
     };
     document.addEventListener('mousedown', listener);
@@ -118,19 +150,28 @@ function useOnClickOutside(ref, handler) {
 // --- FIREBASE SETUP ---
 let app, auth, db, appId;
 try {
-  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-  if (firebaseConfig) {
+  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS SI VOUS LE SOUHAITEZ ⚠️
+  const firebaseConfig = {
+    apiKey: "VOTRE_CLE_API_ICI",
+    authDomain: "votre-projet.firebaseapp.com",
+    projectId: "votre-projet",
+    storageBucket: "votre-projet.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
+  };
+
+  if (firebaseConfig.apiKey !== "VOTRE_CLE_API_ICI") {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-    appId = typeof __app_id !== 'undefined' ? __app_id : 'ezra-park-ultimate';
+    appId = 'ezra-park-production';
   }
 } catch (error) {
   console.error("Erreur Firebase:", error);
 }
 
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Ezra Park vous donne le contrôle total sur votre temps.</p><h2>🔒 Nouveautés réparées :</h2><ul><li><strong>Dossier sur Mobile :</strong> L\'icône est désormais bien visible sur smartphone !</li><li><strong>Matrice d\'Eisenhower Claire :</strong> Fini les simples pastilles de couleurs mystérieuses. Chaque tâche affiche explicitement ses boutons "Urgent & Important", "Planifier", etc. Tout est écrit noir sur blanc.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Ezra Park est prêt et fonctionnel sur Netlify.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Coffre-fort Garanti :</strong> Le mot de passe fonctionne. Une fois la note verrouillée, le texte est bloqué.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes. Les 4 pastilles de couleurs en bas des tâches représentent les 4 quadrants (Urgent/Important).</li></ul>';
 
 const initialNotes = [
   {
@@ -161,7 +202,6 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   const safeEvents = Array.isArray(agendaEvents) ? agendaEvents : [];
 
   const addEvent = (day) => {
-    // Assigne par défaut la matrice 1 (Urgent et Important)
     const newEvent = { id: generateId(), day, title: '', time: '', color: MATRIX_COLORS[0].class };
     updateAgendaEvents([...safeEvents, newEvent]);
   };
@@ -906,25 +946,6 @@ function MainApp() {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // PWA Injection
-  useEffect(() => {
-    try {
-      const manifest = {
-        name: "Ezra Park", short_name: "Ezra Park", display: "standalone", background_color: "#020617", theme_color: "#0f172a", start_url: ".",
-        icons: [{ src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTRiOGE2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwLjI0IDguMTZjLjQtLjM2Ljc2LS43NiAxLjA0LTEuMjItLjQ2LjItMSAuMzYtMS41NC40NGEyLjUyIDIuNTIgMCAwIDAgMS4xOC0xLjQ4Yy0uNTEuMy0xLjA3LjUyLTEuNjYuNjRhMi41IDIuNSAwIDAgMC00LjMzIDEuNjRjMCAuMiAwIC40LjA2LjU4LTQuMDgtLjItNy43LTIuMTYtMTAuMTQtNS4xNGEyLjUgMi41IDAgMCAwIC43NyAzLjMzYy0uNDIgMC0uODItLjEyLTEuMTQtLjMyHYuMDNjMCAxLjIzLjg4IDIuMjYgMi4wNCAyLjQ4LS4yLjA2LS40NC4wOC0uNjYuMDgtLjE4IDAtLjM0LS4wMi0uNTEtLjA2LjMyIDEgMS4yNiAxLjczIDIuMzYgMS43NWE1LjA2IDUuMDYgMCAwIDEtMy4xMiAxLjA4Yy0uMiAwLS40IDAtLjYtLjA0IDEuMTEuNzIgMi40NCAxLjE0IDMuODggMS4xNCA0LjY2IDAgNy4yMi0zLjg2IDcuMjItNy4yMiAwLS4xIDAtLjItLjAyLS4zLjQ4LS4zNi45Mi0uOCAxLjI2LTEuMyIvPjwvc3ZnPg==", sizes: "192x192", type: "image/svg+xml" }]
-      };
-      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-      const manifestURL = URL.createObjectURL(blob);
-      let link = document.querySelector('link[rel="manifest"]');
-      if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link); }
-      link.href = manifestURL;
-      
-      let metaTheme = document.querySelector('meta[name="theme-color"]');
-      if(!metaTheme) { metaTheme = document.createElement('meta'); metaTheme.name = 'theme-color'; document.head.appendChild(metaTheme); }
-      metaTheme.content = '#020617';
-    } catch (e) {}
-  }, []);
-
   // INIT Auth & DATA SYNC
   useEffect(() => {
     if (!auth) { setNotes(initialNotes); setActiveNoteId(initialNotes[0].id); setIsInitializing(false); return; }
@@ -1218,8 +1239,8 @@ function MainApp() {
             </button>
           )}
           {sidebarTab !== 'agenda' && (
-            <div className="relative group">
-              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-teal-400 transition-colors" size={16} />
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 transition-colors" size={16} />
               <input type="text" placeholder="Recherche (Texte masqué si cadenas)..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 text-[14px] text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none border border-slate-800 focus:border-teal-500/50 transition-all placeholder-slate-600 shadow-inner" />
             </div>
           )}
@@ -1578,7 +1599,7 @@ function MainApp() {
 }
 
 // --- SECURE ERROR BOUNDARY ---
-export default class ErrorBoundary extends React.Component {
+class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   resetApp = () => { this.setState({ hasError: false, error: null }); }
@@ -1602,4 +1623,9 @@ export default class ErrorBoundary extends React.Component {
   }
 }
 
-
+const rootElement = document.getElementById('root');
+const root = createRoot(rootElement);
+root.render(<ErrorBoundary />);
+    </script>
+</body>
+</html>
