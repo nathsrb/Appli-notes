@@ -197,7 +197,6 @@ function useOnClickOutside(ref, handler) {
 let app, auth, db;
 const artifactId = 'erza-spark-production';
 
-// VOS CLES SONT MAINTENANT HARDCODEES EN DUR COMME DEMANDÉ
 const firebaseConfig = {
   apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
   authDomain: "ezra-spark.firebaseapp.com",
@@ -633,13 +632,208 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
   }, [nodes, edges, onNodeClick, unlockedNotes]);
 
   return (
+    <div className="w-full h-full bg-slate-950 overflow-hidden relative">
+      <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
+        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites</div>
+      </div>
+      <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+    </div>
+  );
+};
+
+
+// --- MIND MAP ENGINE (IMPROVED DESIGN) ---
+const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
+  const containerRef = useRef(null);
+  const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
+  const [selection, setSelection] = useState('root');
+  const [editingNodeId, setEditingNodeId] = useState(null);
+  
+  const dragState = useRef({ type: null }); 
+  const pinchState = useRef({ initialDist: 0, initialZoom: 1 });
+
+  const [nodes, setNodes] = useState(() => {
+    try {
+      const parsed = JSON.parse(note?.content || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (!parsed.find(n => n.id === 'root')) parsed[0].id = 'root';
+        return parsed;
+      }
+    } catch (e) {}
+    return [{ id: 'root', parentId: null, text: 'Idée Centrale' }];
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const plainText = nodes.map(n => n.text).join(' ');
+      updateNote({ content: JSON.stringify(nodes), plainText });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [nodes, updateNote]);
+
+  const layout = useMemo(() => {
+    try {
+      const W = 220; const H = 60; const gapX = 90; const gapY = 30; // Bigger and more spaced out nodes
+      const childrenMap = {};
+      nodes.forEach(n => childrenMap[n.id] = []);
+      nodes.forEach(n => { if (n.parentId && childrenMap[n.parentId]) childrenMap[n.parentId].push(n.id); });
+
+      const root = nodes.find(n => n.id === 'root') || nodes[0];
+      if (!root) return { positions: {} };
+
+      const nodeSizes = {};
+      const calcSubtreeHeight = (nodeId) => {
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) { nodeSizes[nodeId] = H; return H; }
+        let totalHeight = 0;
+        for (let childId of children) totalHeight += calcSubtreeHeight(childId);
+        totalHeight += (children.length - 1) * gapY;
+        nodeSizes[nodeId] = Math.max(H, totalHeight);
+        return nodeSizes[nodeId];
+      };
+      calcSubtreeHeight(root.id);
+
+      const positions = {};
+      const assignCoordinates = (nodeId, x, centerY, depth) => {
+        const isRoot = depth === 0;
+        const nodeWidth = isRoot ? 260 : W;
+        positions[nodeId] = { x, y: centerY - (H / 2), width: nodeWidth, height: H, depth };
+
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) return;
+        let startY = centerY - (nodeSizes[nodeId] / 2);
+        for (let childId of children) {
+          let childSubtreeHeight = nodeSizes[childId];
+          let childCenterY = startY + (childSubtreeHeight / 2);
+          assignCoordinates(childId, x + nodeWidth + gapX, childCenterY, depth + 1);
+          startY += childSubtreeHeight + gapY;
+        }
+      };
+      assignCoordinates(root.id, 0, 0, 0);
+      return { positions, childrenMap };
+    } catch (error) { return { positions: {} }; }
+  }, [nodes]);
+
+  const addNode = (parentId) => {
+    if (!parentId) return;
+    const newNode = { id: generateId(), parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const addSibling = (currentNodeId) => {
+    const currentNode = nodes.find(n => n.id === currentNodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const newNode = { id: generateId(), parentId: currentNode.parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const deleteNode = (nodeId) => {
+    const currentNode = nodes.find(n => n.id === nodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const toDelete = new Set([nodeId]);
+    const findChildren = (id) => { nodes.filter(n => n.parentId === id).forEach(c => { toDelete.add(c.id); findChildren(c.id); }); };
+    findChildren(nodeId);
+    setNodes(prev => prev.filter(n => !toDelete.has(n.id)));
+    setSelection(currentNode.parentId); 
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey || e.deltaY % 1 !== 0) { 
+      const newZoom = Math.min(Math.max(0.2, camera.zoom + (-e.deltaY * 0.005)), 3);
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+      setCamera({ x: mouseX - (mouseX - camera.x) * (newZoom / camera.zoom), y: mouseY - (mouseY - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+    } else { 
+      setCamera(c => ({ ...c, x: c.x - e.deltaX, y: c.y - e.deltaY }));
+    }
+  };
+
+  const getTouchDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+  const getTouchCenter = (touches, rect) => ({ x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left, y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top });
+
+  const onTouchStart = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1) {
+      dragState.current = { type: 'pan', startX: e.touches[0].clientX, startY: e.touches[0].clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    } else if (e.touches.length === 2) {
+      dragState.current = { type: 'pinch' };
+      pinchState.current = { initialDist: getTouchDistance(e.touches), initialZoom: camera.zoom };
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1 && dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.touches[0].clientX - dragState.current.startX), y: dragState.current.initCamY + (e.touches[0].clientY - dragState.current.startY) });
+    } else if (e.touches.length === 2 && dragState.current.type === 'pinch') {
+      const scale = getTouchDistance(e.touches) / pinchState.current.initialDist;
+      const newZoom = Math.min(Math.max(0.2, pinchState.current.initialZoom * scale), 3);
+      if (containerRef.current) {
+        const center = getTouchCenter(e.touches, containerRef.current.getBoundingClientRect());
+        setCamera({ x: center.x - (center.x - camera.x) * (newZoom / camera.zoom), y: center.y - (center.y - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+      }
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'touch' || editingNodeId) return; 
+    if (e.target === containerRef.current || e.target.tagName === 'svg') {
+      dragState.current = { type: 'pan', startX: e.clientX, startY: e.clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (e.pointerType === 'touch') return;
+    if (dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.clientX - dragState.current.startX), y: dragState.current.initCamY + (e.clientY - dragState.current.startY) });
+    }
+  };
+
+  const drawEdges = () => {
+    const paths = [];
+    nodes.forEach(node => {
+      if (!node.parentId) return;
+      const pPos = layout.positions[node.parentId]; const cPos = layout.positions[node.id];
+      if (!pPos || !cPos) return;
+      const startX = pPos.x + pPos.width; const startY = pPos.y + (pPos.height / 2);
+      const endX = cPos.x; const endY = cPos.y + (cPos.height / 2);
+      const midX = startX + (endX - startX) / 2;
+      // Brighter connection lines for better design
+      paths.push(<path key={`e_${node.id}`} d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`} fill="none" stroke={pPos.depth === 0 ? "#14b8a6" : "#475569"} strokeWidth={pPos.depth === 0 ? "3" : "2"} strokeOpacity="0.8" />);
+    });
+    return paths;
+  };
+
+  const renderNodeText = (text) => {
+    if (!text) return <span className="opacity-40 italic font-normal">Idée...</span>;
+    let displayedText = text;
+    if (searchQuery) {
+      displayedText = highlightTitle(text, searchQuery);
+    }
+    const parts = displayedText.split(/(\[\[.*?\]\])/g);
+    return parts.map((part, i) => {
+      const match = part.match(/\[\[(.*?)\]\]/);
+      if (match) {
+        const linkDest = match[1].replace(/<mark[^>]*>|<\/mark>/g, '');
+        return (<span key={i} className="text-teal-300 font-bold underline cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); navigateToLink(linkDest); }} dangerouslySetInnerHTML={{__html: part}} />);
+      }
+      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+    });
+  };
+
+  return (
     <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
       
-      <div className="hidden md:flex absolute top-5 left-5 z-20 gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomIn size={18}/></button>
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomOut size={18}/></button>
-        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all" title="Centrer"><Maximize size={18}/></button>
+      <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomIn size={24}/></button>
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomOut size={24}/></button>
+        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><Target size={24}/></button>
       </div>
 
       {selection && !editingNodeId && (
@@ -1462,7 +1656,7 @@ function MainApp({ user, onLogout }) {
                </div>
             )}
             
-            {/* FOLDER CLASSIFICATION */}
+            {/* FOLDER CLASSIFICATION (NOW VISIBLE ON MOBILE) */}
             {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && (
                <div className="relative" ref={propertiesRef}>
                  <button onClick={() => setShowProperties(!showProperties)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${showProperties ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Classer dans un dossier"><Folder size={18} /></button>
