@@ -10,10 +10,10 @@
     <meta name="theme-color" content="#020617">
 
     <!-- CHARGEMENT REACT -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     
-    <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS) POUR ÉVITER TOUT CRASH SUR SAFARI iOS -->
+    <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <!-- Firebase Officiel (Version Compatibilité Globale) -->
@@ -49,12 +49,10 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-// Extraction des librairies depuis les variables globales
 const { useState, useEffect, useRef, useMemo, useCallback } = window.React;
 const { createRoot } = window.ReactDOM;
 
-// --- SYSTÈME D'ICÔNES INCASSABLE (PHOSPHOR CSS) ---
-// Cette méthode garantit 100% de compatibilité sur Safari en évitant les erreurs de variables globales
+// --- ICONS ---
 const createIcon = (iconClass) => ({ size = 24, className = "", strokeWidth, ...props }) => {
   const sz = typeof size === 'number' ? size + 'px' : size;
   return <i className={`ph ${iconClass} ${className} flex items-center justify-center leading-none`} style={{ fontSize: sz, width: sz, height: sz }} {...props}></i>;
@@ -196,26 +194,24 @@ function useOnClickOutside(ref, handler) {
 }
 
 // --- FIREBASE SETUP ---
-let app, auth, db, appId;
-try {
-  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS ⚠️
-  const firebaseConfig = {
-    apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
-    authDomain: "ezra-spark.firebaseapp.com",
-    projectId: "ezra-spark",
-    storageBucket: "ezra-spark.firebasestorage.app",
-        messagingSenderId: "379462215469",
-        appId: "1:379462215469:web:2c12802420c76b644d15a4"
-  };
+let app, auth, db;
+const artifactId = 'erza-spark-production';
 
-  if (firebaseConfig.apiKey !== "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg") {
-    app = window.firebase.initializeApp(firebaseConfig);
-    auth = window.firebase.auth();
-    db = window.firebase.firestore();
-    appId = 'erza-spark-production';
-  }
-} catch (error) {
-  console.error("Erreur Firebase:", error);
+// VOS CLES SONT MAINTENANT HARDCODEES EN DUR COMME DEMANDÉ
+const firebaseConfig = {
+  apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
+  authDomain: "ezra-spark.firebaseapp.com",
+  projectId: "ezra-spark",
+  storageBucket: "ezra-spark.firebasestorage.app",
+  messagingSenderId: "379462215469",
+  appId: "1:379462215469:web:2c12802420c76b644d15a4"
+};
+
+// Initialisation sans blocage
+if (window.firebase) {
+  app = window.firebase.initializeApp(firebaseConfig);
+  auth = window.firebase.auth();
+  db = window.firebase.firestore();
 }
 
 // --- AUTHENTICATION SCREEN ---
@@ -229,7 +225,7 @@ const AuthScreen = ({ onGuestLogin }) => {
   const handleAuth = async (e) => {
     e.preventDefault();
     if (!auth) {
-      setError("Firebase n'est pas configuré. Veuillez utiliser le Mode Invité ci-dessous pour tester l'application.");
+      setError("Le service Firebase est momentanément injoignable.");
       return;
     }
     setLoading(true);
@@ -302,7 +298,7 @@ const AuthScreen = ({ onGuestLogin }) => {
 };
 
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est officiellement opérationnel, sans le moindre crash.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local :</strong> Vous êtes libre d\'utiliser l\'application sans compte !</li><li><strong>Système Anti-Crash iOS :</strong> L\'application utilise désormais les Phosphor Icons pour assurer une compatibilité totale sur les anciens Safari. Plus aucun écran bleu !</li><li><strong>Corbeille & Mot de passe :</strong> Tout est opérationnel.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est officiellement opérationnel et stable.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local blindé :</strong> Vous pouvez tester l\'application sans créer de compte en toute sécurité.</li><li><strong>Cloud Firebase :</strong> Vos clés de production sont intégrées et prêtes à l\'emploi.</li><li><strong>Corbeille & Mot de passe :</strong> Tout est opérationnel.</li></ul>';
 
 const initialNotes = [
   {
@@ -640,10 +636,10 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
     <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
       
-      <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomIn size={24}/></button>
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomOut size={24}/></button>
-        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><Target size={24}/></button>
+      <div className="hidden md:flex absolute top-5 left-5 z-20 gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomIn size={18}/></button>
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomOut size={18}/></button>
+        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all" title="Centrer"><Maximize size={18}/></button>
       </div>
 
       {selection && !editingNodeId && (
@@ -843,7 +839,7 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
         
         <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
         
-        <button onClick={(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><ListIcon size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><List size={18}/></button>
         <button onClick={(e) => execCmd(e, 'insertOrderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste numérotée"><ListOrdered size={18}/></button>
         <button onClick={insertCheckbox} className="p-2 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors" title="Case à cocher"><CheckSquare size={18}/></button>
         
@@ -918,11 +914,17 @@ function MainApp({ user, onLogout }) {
   useEffect(() => {
     if (!user) return;
     
-    // GUEST MODE (LocalStorage)
+    // GUEST MODE (LocalStorage sécurisé)
     if (user.isGuest) {
       try {
         const localNotesStr = localStorage.getItem('erza_notes');
-        let localNotes = localNotesStr ? JSON.parse(localNotesStr) : [];
+        let localNotes = [];
+        if (localNotesStr) {
+           try {
+             const parsed = JSON.parse(localNotesStr);
+             if (Array.isArray(parsed)) localNotes = parsed;
+           } catch(e){}
+        }
         
         if (localNotes.length === 0) {
            localNotes = initialNotes;
@@ -934,9 +936,13 @@ function MainApp({ user, onLogout }) {
 
         const localSettingsStr = localStorage.getItem('erza_settings');
         if (localSettingsStr) {
-           const localSettings = JSON.parse(localSettingsStr);
-           if (localSettings.agenda) setAgendaEvents(localSettings.agenda);
-           if (localSettings.appSettings) setAppSettings(localSettings.appSettings);
+           try {
+             const localSettings = JSON.parse(localSettingsStr);
+             if (localSettings && typeof localSettings === 'object') {
+               if (Array.isArray(localSettings.agenda)) setAgendaEvents(localSettings.agenda);
+               if (localSettings.appSettings) setAppSettings(prev => ({...prev, ...localSettings.appSettings}));
+             }
+           } catch(e){}
         }
       } catch (e) {
         console.error(e);
@@ -1086,7 +1092,6 @@ function MainApp({ user, onLogout }) {
   }, [activeNoteId]);
 
   const deleteNote = (id) => {
-    // Soft Delete
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
     setSyncStatus('saving');
     if (activeNoteId === id) setActiveNoteId(null);
@@ -1215,7 +1220,7 @@ function MainApp({ user, onLogout }) {
       `}>
         <div className="p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
           <div className="flex items-center gap-3 font-bold text-white">
-            <div className="text-teal-400"><Feather size={24} /></div>
+            <Feather size={24} className="text-teal-400" />
             <span className="tracking-wide text-xl font-serif">Erza Spark</span>
           </div>
           <div className="flex gap-2">
@@ -1373,7 +1378,7 @@ function MainApp({ user, onLogout }) {
         <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
            <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
-                <UserIcon size={16} />
+                <User size={16} />
               </div>
               <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
                 {user?.email || "Invité (Local)"}
