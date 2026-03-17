@@ -1,0 +1,1605 @@
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { 
+  FileText, Search, Plus, Network, Trash2, Menu, X, Folder, Save, Cloud, CloudOff, 
+  SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, 
+  CornerDownRight, AlignLeft, BookOpen, Bold, Italic, Underline, List, ListOrdered, 
+  Heading1, Heading2, Heading3, CheckSquare, RefreshCw, Feather, Settings, Type, Edit3, 
+  Link as LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid
+} from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+
+// --- UTILS & ALGORITHMS ---
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const stripHtml = (html) => {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<\/h[1-6]>/gi, ' ')
+    .replace(/<[^>]*>?/gm, '') 
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ') 
+    .trim();
+};
+
+const highlightTitle = (title, query) => {
+  if (!query || !title) return title;
+  try {
+    const safeQuery = escapeRegExp(query);
+    return title.replace(new RegExp(`(${safeQuery})`, 'gi'), '<mark class="bg-teal-500/40 text-teal-100 rounded px-0.5 shadow-sm">$1</mark>');
+  } catch (e) {
+    return title;
+  }
+};
+
+const applyHighlightsSafe = (html, query) => {
+  if (!query || !html) return html;
+  try {
+    const safeQuery = escapeRegExp(query);
+    const regex = new RegExp(`(${safeQuery})`, 'gi');
+    let parts = html.split(/(<[^>]*>)/);
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0 && parts[i].trim() !== '') {
+        parts[i] = parts[i].replace(regex, '<mark class="search-hl bg-teal-500/60 text-white rounded px-1 shadow-md">$1</mark>');
+      }
+    }
+    return parts.join('');
+  } catch(e) {
+    return html;
+  }
+};
+
+const stripHighlightsSafe = (html) => {
+  if (!html) return '';
+  return html.replace(/<mark class="search-hl[^>]*>(.*?)<\/mark>/gi, '$1');
+};
+
+const getSnippet = (plainText, query) => {
+  if (!query || !plainText) return null;
+  try {
+    const lowerText = plainText.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    
+    const index = lowerText.indexOf(lowerQuery);
+    if (index === -1) return null;
+
+    const windowSize = 25; 
+    const start = Math.max(0, index - windowSize);
+    const end = Math.min(plainText.length, index + query.length + windowSize);
+    
+    let snippet = plainText.substring(start, end);
+    if (start > 0) snippet = "..." + snippet;
+    if (end < plainText.length) snippet = snippet + "...";
+
+    const safeQuery = escapeRegExp(query);
+    return snippet.replace(new RegExp(`(${safeQuery})`, 'gi'), '<mark class="text-teal-100 bg-teal-500/60 px-1 rounded shadow-sm font-bold">$1</mark>');
+  } catch(e) {
+    return null;
+  }
+};
+
+const extractLinks = (content) => {
+  if (!content) return [];
+  const links = [];
+  const regex1 = /data-link="([^"]+)"/g;
+  let match;
+  while ((match = regex1.exec(content)) !== null) {
+      links.push(match[1]);
+  }
+  const regex2 = /\[\[(.*?)\]\]/g;
+  while ((match = regex2.exec(content)) !== null) {
+      links.push(match[1]);
+  }
+  return [...new Set(links)]; 
+};
+
+// --- HOOK: CLICK OUTSIDE ---
+function useOnClickOutside(ref, handler) {
+  useEffect(() => {
+    const listener = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) {
+        return;
+      }
+      handler(event);
+    };
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [ref, handler]);
+}
+
+// --- FIREBASE SETUP ---
+let app, auth, db, appId;
+try {
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+  if (firebaseConfig) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    appId = typeof __app_id !== 'undefined' ? __app_id : 'ezra-park-ultimate';
+  }
+} catch (error) {
+  console.error("Erreur Firebase:", error);
+}
+
+// --- INITIAL MOCK DATA ---
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Ezra Park vous donne le contrôle total sur votre temps.</p><h2>🔒 Nouveautés réparées :</h2><ul><li><strong>Dossier sur Mobile :</strong> L\'icône est désormais bien visible sur smartphone !</li><li><strong>Matrice d\'Eisenhower Claire :</strong> Fini les simples pastilles de couleurs mystérieuses. Chaque tâche affiche explicitement ses boutons "Urgent & Important", "Planifier", etc. Tout est écrit noir sur blanc.</li></ul>';
+
+const initialNotes = [
+  {
+    id: generateId(),
+    title: 'Bienvenue dans Ezra Park',
+    type: 'note',
+    folder: 'Général',
+    content: initialContent,
+    plainText: stripHtml(initialContent),
+    isLocked: false,
+    lockPassword: '',
+    lastModified: Date.now()
+  }
+];
+
+const WEEK_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+// --- EISENHOWER EXPLICIT MATRIX ---
+const MATRIX_COLORS = [
+  { class: 'bg-rose-500/10 border-rose-500/30 text-rose-200', bg: 'bg-rose-500', action: 'Faire', sub: 'Urgent & Important', icon: '🔴' },
+  { class: 'bg-teal-500/10 border-teal-500/30 text-teal-200', bg: 'bg-teal-500', action: 'Planifier', sub: 'Important, Pas Urgent', icon: '🟢' },
+  { class: 'bg-amber-500/10 border-amber-500/30 text-amber-200', bg: 'bg-amber-500', action: 'Déléguer', sub: 'Urgent, Pas Imp.', icon: '🟡' },
+  { class: 'bg-slate-500/10 border-slate-500/30 text-slate-300', bg: 'bg-slate-500', action: 'Éliminer', sub: 'Ni Urg. Ni Imp.', icon: '⚪' }
+];
+
+// --- AGENDA COMPONENT (EXPLICIT COLUMNS) ---
+const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
+  const safeEvents = Array.isArray(agendaEvents) ? agendaEvents : [];
+
+  const addEvent = (day) => {
+    // Assigne par défaut la matrice 1 (Urgent et Important)
+    const newEvent = { id: generateId(), day, title: '', time: '', color: MATRIX_COLORS[0].class };
+    updateAgendaEvents([...safeEvents, newEvent]);
+  };
+
+  const updateEvent = (id, field, value) => {
+    updateAgendaEvents(safeEvents.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+
+  const deleteEvent = (id) => updateAgendaEvents(safeEvents.filter(e => e.id !== id));
+
+  return (
+    <div className="w-full h-full overflow-x-auto overflow-y-auto bg-slate-950 p-4 sm:p-6 custom-scrollbar flex gap-4 items-start">
+      {WEEK_DAYS.map(day => (
+        <div key={day} className="flex-shrink-0 w-[310px] bg-slate-900 rounded-3xl border border-slate-800 flex flex-col max-h-[85vh] shadow-xl shadow-black/20">
+          <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/80 backdrop-blur rounded-t-3xl sticky top-0 z-10">
+            <h3 className="font-serif font-bold text-lg text-slate-200 tracking-wide">{day}</h3>
+            <button onClick={() => addEvent(day)} className="text-slate-400 hover:text-teal-400 transition-colors p-1.5 bg-slate-800 rounded-xl hover:bg-slate-700"><Plus size={16}/></button>
+          </div>
+          <div className="p-3 overflow-y-auto custom-scrollbar flex-1 space-y-4 pb-20">
+            {safeEvents.filter(e => e.day === day).map(ev => {
+              const currentMatrix = MATRIX_COLORS.find(m => m.class === ev.color) || MATRIX_COLORS[0];
+              
+              return (
+                <div key={ev.id} className={`p-4 rounded-2xl border flex flex-col gap-2 group transition-all shadow-sm ${ev.color || MATRIX_COLORS[0].class}`}>
+                  {/* EXPLICIT TITLE FOR MATRIX */}
+                  <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1 flex items-center gap-1.5">
+                    {currentMatrix.icon} {currentMatrix.action} <span className="opacity-60 normal-case">({currentMatrix.sub})</span>
+                  </div>
+                  
+                  <div className="flex justify-between gap-2 items-center">
+                    <input 
+                      type="text" placeholder="ex: 10h00 - 12h00" value={ev.time || ''} onChange={(e) => updateEvent(ev.id, 'time', e.target.value)}
+                      className="bg-black/20 text-xs font-mono px-2.5 py-1.5 rounded-lg outline-none w-full placeholder-slate-500 text-slate-200 font-semibold"
+                    />
+                    <button onClick={() => deleteEvent(ev.id)} className="text-slate-500 hover:text-rose-400 transition-opacity p-1.5 bg-black/20 rounded-lg"><Trash2 size={14}/></button>
+                  </div>
+                  <textarea
+                    placeholder="Tâche, notes..." value={ev.title || ''} onChange={(e) => updateEvent(ev.id, 'title', e.target.value)}
+                    className="bg-transparent outline-none resize-none text-[15px] font-sans min-h-[50px] custom-scrollbar text-slate-100 placeholder-slate-500 leading-relaxed mt-1"
+                  />
+                  
+                  {/* EXPLICIT BUTTONS MATRIX */}
+                  <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-700/50">
+                    {MATRIX_COLORS.map(m => {
+                      const isSelected = (ev.color || MATRIX_COLORS[0].class) === m.class;
+                      return (
+                        <button 
+                          key={m.bg} 
+                          onClick={() => updateEvent(ev.id, 'color', m.class)} 
+                          className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border transition-all ${isSelected ? `${m.bg} border-transparent text-white shadow-md` : 'bg-black/20 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{m.icon} {m.action}</span>
+                          <span className="text-[8px] opacity-70 mt-0.5 font-medium">{m.sub}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {safeEvents.filter(e => e.day === day).length === 0 && (
+              <div className="text-center p-5 border border-dashed border-slate-700/50 rounded-2xl text-slate-500 text-sm cursor-pointer hover:border-teal-500/50 hover:text-teal-400 hover:bg-teal-500/5 transition-all" onClick={() => addEvent(day)}>+ Ajouter une activité</div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// --- PASSWORD PROMPT COMPONENT ---
+const PasswordPrompt = ({ note, onUnlock }) => {
+  const [pwd, setPwd] = useState('');
+  const [err, setErr] = useState(false);
+
+  useEffect(() => { setPwd(''); setErr(false); }, [note.id]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pwd === note.lockPassword) onUnlock(note.id);
+    else { setErr(true); setPwd(''); }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-slate-500 px-4 font-sans bg-slate-950">
+      <form onSubmit={handleSubmit} className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-col items-center text-center max-w-sm w-full relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
+        <div className="bg-rose-500/10 p-4 rounded-full mb-6 text-rose-500 border border-rose-500/20">
+          <Lock size={32} />
+        </div>
+        <h2 className="text-2xl font-serif font-bold text-white mb-2">Note Sécurisée</h2>
+        <p className="text-sm text-slate-400 mb-8 font-medium">L'accès à "{note.title}" est protégé.</p>
+        
+        <input 
+          type="password" value={pwd} onChange={(e) => {setPwd(e.target.value); setErr(false);}} 
+          className={`w-full bg-slate-950 border ${err ? 'border-rose-500 text-rose-400' : 'border-slate-700 text-white'} rounded-xl px-4 py-3.5 outline-none focus:border-teal-500 text-center tracking-[0.3em] font-mono mb-2 shadow-inner`}
+          placeholder="••••••••" autoFocus
+        />
+        <div className="h-6">
+          {err && <p className="text-xs text-rose-500 font-bold animate-pulse">Mot de passe incorrect</p>}
+        </div>
+        
+        <button type="submit" className="w-full mt-2 bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20">
+          <Unlock size={18} /> Déverrouiller
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// --- GLOBAL GRAPH VIEW COMPONENT ---
+const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
+  const canvasRef = useRef(null);
+  
+  const { nodes, edges } = useMemo(() => {
+    const nodesList = [];
+    const edgesList = [];
+    
+    notes.forEach(n => { 
+      nodesList.push({ 
+        id: n.id, title: n.title, type: n.type || 'note', folder: n.folder || 'Général',
+        isLocked: n.isLocked && !unlockedNotes.has(n.id), x: Math.random() * 800, y: Math.random() * 600, vx: 0, vy: 0, mass: 1
+      }); 
+    });
+
+    for (let i = 0; i < notes.length; i++) {
+      const noteA = notes[i];
+      const nodeA = nodesList.find(n => n.id === noteA.id);
+      if (!nodeA) continue;
+
+      for (let j = i + 1; j < notes.length; j++) {
+        const noteB = notes[j];
+        const nodeB = nodesList.find(n => n.id === noteB.id);
+        if (!nodeB) continue;
+
+        let linkStrength = 0;
+        let linkType = 'none';
+
+        if (noteA.folder && noteB.folder && noteA.folder === noteB.folder && noteA.folder !== 'Général') {
+          linkStrength = 0.2; linkType = 'folder';
+        }
+
+        if (noteB.title && noteB.title.length > 3 && noteA.plainText && !nodeA.isLocked) {
+           const regex = new RegExp(`(?:^|\\W)${escapeRegExp(noteB.title)}(?:$|\\W)`, 'i');
+           if (regex.test(noteA.plainText)) { linkStrength = 0.6; linkType = 'implicit'; }
+        }
+        if (noteA.title && noteA.title.length > 3 && noteB.plainText && !nodeB.isLocked) {
+           const regex = new RegExp(`(?:^|\\W)${escapeRegExp(noteA.title)}(?:$|\\W)`, 'i');
+           if (regex.test(noteB.plainText)) { linkStrength = 0.6; linkType = 'implicit'; }
+        }
+
+        if (!nodeA.isLocked) {
+           const linksA = extractLinks(noteA.content);
+           if (linksA.some(l => l.toLowerCase() === (noteB.title||'').toLowerCase())) { linkStrength = 1.0; linkType = 'explicit'; }
+        }
+        if (!nodeB.isLocked) {
+           const linksB = extractLinks(noteB.content);
+           if (linksB.some(l => l.toLowerCase() === (noteA.title||'').toLowerCase())) { linkStrength = 1.0; linkType = 'explicit'; }
+        }
+
+        if (linkStrength > 0) {
+           edgesList.push({ source: noteA.id, target: noteB.id, strength: linkStrength, type: linkType });
+           if (linkType === 'explicit') { nodeA.mass += 0.5; nodeB.mass += 0.5; }
+        }
+      }
+    }
+    return { nodes: nodesList, edges: edgesList };
+  }, [notes, unlockedNotes]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    const resizeCanvas = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; };
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+    const simulate = () => {
+      const damping = 0.8; const k = 0.05; const repulsion = 8000; const idealLength = 200;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const n1 = nodes[i], n2 = nodes[j];
+          const dx = n1.x - n2.x, dy = n1.y - n2.y;
+          let distance = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = repulsion / (distance * distance);
+          const fx = (dx / distance) * force, fy = (dy / distance) * force;
+          n1.vx += fx / n1.mass; n1.vy += fy / n1.mass; 
+          n2.vx -= fx / n2.mass; n2.vy -= fy / n2.mass;
+        }
+      }
+      edges.forEach(edge => {
+        const n1 = nodes.find(n => n.id === edge.source), n2 = nodes.find(n => n.id === edge.target);
+        if (!n1 || !n2) return;
+        const dx = n2.x - n1.x, dy = n2.y - n1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        const specificIdealLength = idealLength * (1.2 - edge.strength); 
+        const force = (distance - specificIdealLength) * k * edge.strength;
+        const fx = (dx / distance) * force, fy = (dy / distance) * force;
+        n1.vx += fx; n1.vy += fy; n2.vx -= fx; n2.vy -= fy;
+      });
+      const centerX = canvas.width / 2, centerY = canvas.height / 2;
+      nodes.forEach(n => {
+        n.vx += (centerX - n.x) * 0.015; n.vy += (centerY - n.y) * 0.015;
+        n.x += n.vx; n.y += n.vy;
+        n.vx *= damping; n.vy *= damping;
+      });
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      edges.forEach(edge => {
+        const n1 = nodes.find(n => n.id === edge.source), n2 = nodes.find(n => n.id === edge.target);
+        if (!n1 || !n2) return;
+        ctx.beginPath(); ctx.moveTo(n1.x, n1.y); ctx.lineTo(n2.x, n2.y); 
+        
+        if (edge.type === 'explicit') { ctx.strokeStyle = 'rgba(20, 184, 166, 0.6)'; ctx.lineWidth = 2; ctx.setLineDash([]); } 
+        else if (edge.type === 'implicit') { ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([]); } 
+        else if (edge.type === 'folder') { ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); }
+        ctx.stroke();
+      });
+      ctx.setLineDash([]); 
+
+      nodes.forEach(node => {
+        ctx.beginPath();
+        const radius = node.mass > 1 ? 16 : 12; 
+        if (node.isLocked) { ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI); ctx.fillStyle = '#f43f5e'; } 
+        else if (node.type === 'mindmap') { ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI); ctx.fillStyle = '#f59e0b'; } 
+        else { ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI); ctx.fillStyle = '#14b8a6'; }
+        ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 3; ctx.stroke();
+        
+        ctx.fillStyle = '#f8fafc'; ctx.font = '12px ui-sans-serif, system-ui, sans-serif'; ctx.textAlign = 'center';
+        const displayTitle = node.isLocked ? `🔒 ${node.title}` : node.title;
+        const textWidth = ctx.measureText(displayTitle).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.roundRect(node.x - textWidth/2 - 6, node.y + radius + 4, textWidth + 12, 20, 4); ctx.fill();
+        ctx.fillStyle = '#e2e8f0'; ctx.fillText(displayTitle, node.x, node.y + radius + 18);
+      });
+    };
+
+    const loop = () => { simulate(); draw(); animationFrameId = requestAnimationFrame(loop); };
+    loop();
+
+    const handleClick = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
+      const clickedNode = nodes.find(n => {
+         const radius = n.mass > 1 ? 16 : 12;
+         return Math.sqrt(Math.pow(clickX - n.x, 2) + Math.pow(clickY - n.y, 2)) < radius + 10;
+      });
+      if (clickedNode) onNodeClick(clickedNode);
+    };
+    canvas.addEventListener('click', handleClick);
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
+      canvas.removeEventListener('click', handleClick);
+    };
+  }, [nodes, edges, onNodeClick, unlockedNotes]);
+
+  return (
+    <div className="w-full h-full bg-slate-950 overflow-hidden relative">
+      <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
+        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral 2.0</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites (Texte)</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-blue-500 border border-dashed border-slate-900"></div> Même Dossier</div>
+      </div>
+      <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+    </div>
+  );
+};
+
+
+// --- WYSIWYG EDITOR COMPONENT ---
+const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQuery }) => {
+  const editorRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const savedSelection = useRef(null); 
+  const prevNoteId = useRef(note.id);
+  const prevSearch = useRef(searchQuery);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const noteChanged = note.id !== prevNoteId.current;
+    const searchChanged = searchQuery !== prevSearch.current;
+    let rawHtml = editorRef.current.innerHTML;
+    let strippedRaw = stripHighlightsSafe(rawHtml);
+    const isDesynced = !isFocused && strippedRaw !== note.content && note.content;
+
+    if (noteChanged || searchChanged || isDesynced) {
+      let html = note.content || '<h1>Nouvelle Note</h1><p><br></p>';
+      if (searchQuery && !isFocused) html = applyHighlightsSafe(html, searchQuery);
+      editorRef.current.innerHTML = html;
+
+      if (searchQuery && !isFocused) {
+        setTimeout(() => {
+          if (editorRef.current) {
+            const mark = editorRef.current.querySelector('mark.search-hl');
+            if (mark) mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
+      }
+      prevNoteId.current = note.id; prevSearch.current = searchQuery;
+    }
+  }, [note.id, note.content, searchQuery, isFocused]);
+
+  const handleInput = useCallback(() => {
+    if (editorRef.current) {
+      let rawHtml = editorRef.current.innerHTML;
+      if (rawHtml.includes('search-hl')) rawHtml = stripHighlightsSafe(rawHtml);
+      updateNote({ content: rawHtml, plainText: stripHtml(rawHtml) });
+    }
+  }, [updateNote]);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (editorRef.current && editorRef.current.innerHTML.includes('search-hl')) {
+      editorRef.current.innerHTML = stripHighlightsSafe(editorRef.current.innerHTML);
+    }
+  };
+
+  const handleBlur = () => { setIsFocused(false); handleInput(); };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel.getRangeAt && sel.rangeCount) savedSelection.current = sel.getRangeAt(0);
+  };
+
+  const execCmd = (e, command, value = null) => {
+    if (e) e.preventDefault(); 
+    if (editorRef.current) {
+      editorRef.current.focus();
+      if (savedSelection.current) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedSelection.current);
+      }
+    }
+    if (command === 'formatBlock') document.execCommand(command, false, `<${value}>`);
+    else document.execCommand(command, false, value);
+    handleInput();
+  };
+
+  const handleEditorClick = (e) => {
+    if (e.target && e.target.classList.contains('ezra-cb')) {
+      if (e.target.hasAttribute('checked')) e.target.removeAttribute('checked');
+      else e.target.setAttribute('checked', 'checked');
+      handleInput();
+    }
+    if (e.target && e.target.classList.contains('internal-link')) {
+       e.preventDefault();
+       const linkDest = e.target.getAttribute('data-link');
+       if (linkDest) navigateToLink(linkDest);
+    }
+  };
+
+  const insertCheckbox = (e) => {
+    e.preventDefault();
+    if (editorRef.current) editorRef.current.focus();
+    document.execCommand('insertHTML', false, '<input type="checkbox" class="ezra-cb" style="margin-right: 8px; transform: scale(1.2); cursor: pointer;" />&nbsp;');
+    handleInput();
+  };
+
+  const insertInternalLink = (e) => {
+    e.preventDefault();
+    const linkName = prompt("Nom de la note à lier (Second Cerveau) :");
+    if (linkName) {
+      if (editorRef.current) editorRef.current.focus();
+      if (savedSelection.current) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedSelection.current);
+      }
+      const html = `<span class="internal-link text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded cursor-pointer font-bold hover:bg-teal-500/20 transition-colors border border-teal-500/30" contenteditable="false" data-link="${linkName}">[[${linkName}]]</span>&nbsp;`;
+      document.execCommand('insertHTML', false, html);
+      handleInput();
+    }
+  };
+
+  const fonts = ['Arial', 'Georgia', 'Courier New', 'Verdana', 'Trebuchet MS'];
+
+  return (
+    <div className="flex flex-col w-full h-full bg-slate-950">
+      
+      {/* TOOLBAR */}
+      <div onMouseDown={saveSelection} className="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-1 sm:gap-2 overflow-x-auto custom-scrollbar shrink-0 shadow-md z-10">
+        <button onClick={(e) => execCmd(e, 'undo')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Annuler"><Undo size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'redo')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Rétablir"><Redo size={18}/></button>
+
+        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+
+        <select onChange={(e) => execCmd(e, 'fontName', e.target.value)} className="bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500">
+          <option value="">Police</option>
+          {fonts.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+        <select onChange={(e) => execCmd(e, 'fontSize', e.target.value)} className="bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500">
+          <option value="">Taille</option>
+          <option value="2">Petit</option>
+          <option value="3">Normal</option>
+          <option value="5">Grand</option>
+          <option value="7">Géant</option>
+        </select>
+        
+        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        
+        <button onClick={(e) => execCmd(e, 'formatBlock', 'H1')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Grand Titre"><Heading1 size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'formatBlock', 'H2')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Sous Titre"><Heading2 size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'formatBlock', 'H3')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Petit Titre"><Heading3 size={18}/></button>
+        
+        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        
+        <button onClick={(e) => execCmd(e, 'bold')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Gras"><Bold size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'italic')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Italique"><Italic size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'underline')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Souligné"><Underline size={18}/></button>
+        
+        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        
+        <button onClick={(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><List size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'insertOrderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste numérotée"><ListOrdered size={18}/></button>
+        <button onClick={insertCheckbox} className="p-2 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors" title="Case à cocher"><CheckSquare size={18}/></button>
+        
+        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+
+        <button onClick={(e) => execCmd(e, 'formatBlock', 'BLOCKQUOTE')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Citation"><Quote size={18}/></button>
+        <button onClick={insertInternalLink} className="p-2 text-teal-500 hover:text-white hover:bg-teal-500/20 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-transparent hover:border-teal-500/30" title="Lier une note (Second Cerveau)"><LinkIcon size={16}/> Lien</button>
+
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 lg:px-24 scroll-smooth">
+        <input 
+          type="text" 
+          value={note.title || ''} 
+          onChange={(e) => updateNote({ title: e.target.value })} 
+          className="w-full max-w-4xl mx-auto block bg-transparent text-3xl md:text-5xl font-serif font-extrabold text-white mb-6 pb-4 border-b border-slate-800/50 outline-none placeholder-slate-700 tracking-tight" 
+          placeholder="Titre de la note"
+        />
+        <div 
+          ref={editorRef}
+          contentEditable
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onInput={handleInput}
+          onClick={handleEditorClick}
+          onKeyUp={saveSelection}
+          onMouseUp={saveSelection}
+          className={`ezra-editor w-full max-w-4xl mx-auto min-h-[60vh] outline-none text-slate-300 pb-32 ${appSettings?.fontSize || 'text-[16px]'} ${appSettings?.lineSpacing || 'leading-relaxed'} ${appSettings?.fontFamily || 'font-sans'}`}
+          placeholder="Écrivez vos pensées ici..."
+          suppressContentEditableWarning={true}
+        />
+      </div>
+    </div>
+  );
+};
+
+
+// --- MIND MAP ENGINE ---
+const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
+  const containerRef = useRef(null);
+  const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
+  const [selection, setSelection] = useState('root');
+  const [editingNodeId, setEditingNodeId] = useState(null);
+  
+  const dragState = useRef({ type: null }); 
+  const pinchState = useRef({ initialDist: 0, initialZoom: 1 });
+
+  const [nodes, setNodes] = useState(() => {
+    try {
+      const parsed = JSON.parse(note?.content || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (!parsed.find(n => n.id === 'root')) parsed[0].id = 'root';
+        return parsed;
+      }
+    } catch (e) {}
+    return [{ id: 'root', parentId: null, text: 'Idée Centrale' }];
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const plainText = nodes.map(n => n.text).join(' ');
+      updateNote({ content: JSON.stringify(nodes), plainText });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [nodes, updateNote]);
+
+  const layout = useMemo(() => {
+    try {
+      const W = 170; const H = 50; const gapX = 70; const gapY = 25;
+      const childrenMap = {};
+      nodes.forEach(n => childrenMap[n.id] = []);
+      nodes.forEach(n => { if (n.parentId && childrenMap[n.parentId]) childrenMap[n.parentId].push(n.id); });
+
+      const root = nodes.find(n => n.id === 'root') || nodes[0];
+      if (!root) return { positions: {} };
+
+      const nodeSizes = {};
+      const calcSubtreeHeight = (nodeId) => {
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) { nodeSizes[nodeId] = H; return H; }
+        let totalHeight = 0;
+        for (let childId of children) totalHeight += calcSubtreeHeight(childId);
+        totalHeight += (children.length - 1) * gapY;
+        nodeSizes[nodeId] = Math.max(H, totalHeight);
+        return nodeSizes[nodeId];
+      };
+      calcSubtreeHeight(root.id);
+
+      const positions = {};
+      const assignCoordinates = (nodeId, x, centerY, depth) => {
+        const isRoot = depth === 0;
+        const nodeWidth = isRoot ? 220 : W;
+        positions[nodeId] = { x, y: centerY - (H / 2), width: nodeWidth, height: H, depth };
+
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) return;
+        let startY = centerY - (nodeSizes[nodeId] / 2);
+        for (let childId of children) {
+          let childSubtreeHeight = nodeSizes[childId];
+          let childCenterY = startY + (childSubtreeHeight / 2);
+          assignCoordinates(childId, x + nodeWidth + gapX, childCenterY, depth + 1);
+          startY += childSubtreeHeight + gapY;
+        }
+      };
+      assignCoordinates(root.id, 0, 0, 0);
+      return { positions, childrenMap };
+    } catch (error) { return { positions: {} }; }
+  }, [nodes]);
+
+  const addNode = (parentId) => {
+    if (!parentId) return;
+    const newNode = { id: generateId(), parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const addSibling = (currentNodeId) => {
+    const currentNode = nodes.find(n => n.id === currentNodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const newNode = { id: generateId(), parentId: currentNode.parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const deleteNode = (nodeId) => {
+    const currentNode = nodes.find(n => n.id === nodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const toDelete = new Set([nodeId]);
+    const findChildren = (id) => { nodes.filter(n => n.parentId === id).forEach(c => { toDelete.add(c.id); findChildren(c.id); }); };
+    findChildren(nodeId);
+    setNodes(prev => prev.filter(n => !toDelete.has(n.id)));
+    setSelection(currentNode.parentId); 
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey || e.deltaY % 1 !== 0) { 
+      const newZoom = Math.min(Math.max(0.2, camera.zoom + (-e.deltaY * 0.005)), 3);
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+      setCamera({ x: mouseX - (mouseX - camera.x) * (newZoom / camera.zoom), y: mouseY - (mouseY - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+    } else { 
+      setCamera(c => ({ ...c, x: c.x - e.deltaX, y: c.y - e.deltaY }));
+    }
+  };
+
+  const getTouchDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+  const getTouchCenter = (touches, rect) => ({ x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left, y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top });
+
+  const onTouchStart = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1) {
+      dragState.current = { type: 'pan', startX: e.touches[0].clientX, startY: e.touches[0].clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    } else if (e.touches.length === 2) {
+      dragState.current = { type: 'pinch' };
+      pinchState.current = { initialDist: getTouchDistance(e.touches), initialZoom: camera.zoom };
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1 && dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.touches[0].clientX - dragState.current.startX), y: dragState.current.initCamY + (e.touches[0].clientY - dragState.current.startY) });
+    } else if (e.touches.length === 2 && dragState.current.type === 'pinch') {
+      const scale = getTouchDistance(e.touches) / pinchState.current.initialDist;
+      const newZoom = Math.min(Math.max(0.2, pinchState.current.initialZoom * scale), 3);
+      if (containerRef.current) {
+        const center = getTouchCenter(e.touches, containerRef.current.getBoundingClientRect());
+        setCamera({ x: center.x - (center.x - camera.x) * (newZoom / camera.zoom), y: center.y - (center.y - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+      }
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'touch' || editingNodeId) return; 
+    if (e.target === containerRef.current || e.target.tagName === 'svg') {
+      dragState.current = { type: 'pan', startX: e.clientX, startY: e.clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (e.pointerType === 'touch') return;
+    if (dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.clientX - dragState.current.startX), y: dragState.current.initCamY + (e.clientY - dragState.current.startY) });
+    }
+  };
+
+  const drawEdges = () => {
+    const paths = [];
+    nodes.forEach(node => {
+      if (!node.parentId) return;
+      const pPos = layout.positions[node.parentId]; const cPos = layout.positions[node.id];
+      if (!pPos || !cPos) return;
+      const startX = pPos.x + pPos.width; const startY = pPos.y + (pPos.height / 2);
+      const endX = cPos.x; const endY = cPos.y + (cPos.height / 2);
+      const midX = startX + (endX - startX) / 2;
+      paths.push(<path key={`e_${node.id}`} d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`} fill="none" stroke={pPos.depth === 0 ? "#14b8a6" : "#334155"} strokeWidth={pPos.depth === 0 ? "3" : "2"} strokeOpacity="0.7" />);
+    });
+    return paths;
+  };
+
+  const renderNodeText = (text) => {
+    if (!text) return <span className="opacity-40 italic font-normal">Idée...</span>;
+    let displayedText = text;
+    if (searchQuery) {
+      displayedText = highlightTitle(text, searchQuery);
+    }
+    const parts = displayedText.split(/(\[\[.*?\]\])/g);
+    return parts.map((part, i) => {
+      const match = part.match(/\[\[(.*?)\]\]/);
+      if (match) {
+        const linkDest = match[1].replace(/<mark[^>]*>|<\/mark>/g, '');
+        return (<span key={i} className="text-teal-300 font-bold underline cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); navigateToLink(linkDest); }} dangerouslySetInnerHTML={{__html: part}} />);
+      }
+      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+    });
+  };
+
+  return (
+    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
+      
+      <div className="hidden md:flex absolute top-5 left-5 z-20 gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomIn size={18}/></button>
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomOut size={18}/></button>
+        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all" title="Centrer"><Maximize size={18}/></button>
+      </div>
+
+      {selection && !editingNodeId && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-3 bg-slate-900/95 p-3 rounded-3xl border border-slate-700 shadow-2xl backdrop-blur-lg w-max">
+          <button onPointerDown={(e) => { e.stopPropagation(); setEditingNodeId(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-white bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><Edit3 size={18}/><span className="text-[10px] font-bold tracking-wide">ÉDITER</span></button>
+          <button onPointerDown={(e) => { e.stopPropagation(); addNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[75px] h-[60px] sm:w-24 sm:h-16 text-white bg-teal-600 hover:bg-teal-500 rounded-2xl transition-all shadow-md shadow-teal-500/20"><CornerDownRight size={18}/><span className="text-[10px] font-bold tracking-wide">ENFANT</span></button>
+          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); addSibling(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[80px] h-[60px] sm:w-24 sm:h-16 text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><AlignLeft size={18}/><span className="text-[10px] font-bold tracking-wide">FRÈRE</span></button>}
+          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); deleteNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-rose-200 bg-rose-500/20 hover:bg-rose-500/40 rounded-2xl transition-all shadow-md"><Trash2 size={18}/><span className="text-[10px] font-bold tracking-wide">SUPPR</span></button>}
+        </div>
+      )}
+      
+      <div className="absolute inset-0 origin-top-left" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
+        <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-0">{drawEdges()}</svg>
+        {nodes.map(node => {
+          const pos = layout.positions[node.id];
+          if (!pos) return null;
+          const isSelected = selection === node.id; const isEditing = editingNodeId === node.id; const isRoot = pos.depth === 0;
+          
+          let nodeClass = "absolute flex items-center p-3 sm:p-4 transition-all cursor-pointer border-2 z-10 overflow-hidden ";
+          if (isRoot) {
+            nodeClass += "bg-slate-900 border-teal-500 rounded-[2rem] justify-center text-center shadow-2xl shadow-teal-500/10 ";
+            nodeClass += isSelected ? "ring-4 ring-teal-500/30 scale-105" : "hover:border-teal-400";
+          } else {
+            nodeClass += "bg-slate-900/90 border-slate-700 rounded-2xl justify-start shadow-xl backdrop-blur-sm ";
+            nodeClass += isSelected ? "border-teal-500 ring-2 ring-teal-500/20 bg-slate-800 scale-105" : "hover:border-slate-500";
+          }
+
+          return (
+            <div key={node.id} onPointerDown={(e) => { e.stopPropagation(); setSelection(node.id); if(editingNodeId !== node.id) setEditingNodeId(null); }} onDoubleClick={(e) => { e.stopPropagation(); setEditingNodeId(node.id); setSelection(node.id); }} className={nodeClass} style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, width: pos.width, minHeight: pos.height }}>
+              {isEditing ? (
+                <textarea 
+                  autoFocus 
+                  className={`w-full h-full bg-transparent text-slate-100 outline-none resize-none custom-scrollbar p-1 ${isRoot ? 'text-lg text-center font-serif font-bold' : 'text-[15px] font-sans font-medium'}`} 
+                  value={node.text || ''} 
+                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, text: e.target.value } : n))} 
+                  onPointerDown={(e) => e.stopPropagation()} 
+                  onBlur={() => setEditingNodeId(null)} 
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingNodeId(null); } }} 
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                />
+              ) : (
+                <div className={`text-slate-100 w-full flex items-center leading-snug ${isRoot ? 'text-base sm:text-lg justify-center font-serif font-bold tracking-wide' : 'text-sm sm:text-[15px] font-sans font-medium'}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {renderNodeText(node.text)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
+// --- MAIN APPLICATION COMPONENT ---
+function MainApp() {
+  const [user, setUser] = useState(null);
+  const [notes, setNotes] = useState([]);
+  
+  // Matrix/Agenda State
+  const [agendaEvents, setAgendaEvents] = useState([]);
+  
+  const [activeNoteId, setActiveNoteId] = useState(null);
+  const [viewMode, setViewMode] = useState('editor'); 
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); 
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState('files'); 
+  const [syncStatus, setSyncStatus] = useState('synced');
+  const [isInitializing, setIsInitializing] = useState(true);
+  
+  const [appSettings, setAppSettings] = useState({ fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed' });
+  const [showSettings, setShowSettings] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
+  
+  // Folder Toggle State
+  const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
+
+  // Refs for click outside
+  const settingsRef = useRef(null);
+  const propertiesRef = useRef(null);
+  const lockConfigRef = useRef(null);
+
+  useOnClickOutside(settingsRef, () => setShowSettings(false));
+  useOnClickOutside(propertiesRef, () => setShowProperties(false));
+  useOnClickOutside(lockConfigRef, () => setShowLockConfig(false));
+
+  // SECURE LOCK STATE
+  const [unlockedNotes, setUnlockedNotes] = useState(new Set());
+  const [showLockConfig, setShowLockConfig] = useState(false);
+  const [lockPasswordInput, setLockPasswordInput] = useState('');
+
+  useEffect(() => { 
+    if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
+  }, []);
+
+  // PWA Injection
+  useEffect(() => {
+    try {
+      const manifest = {
+        name: "Ezra Park", short_name: "Ezra Park", display: "standalone", background_color: "#020617", theme_color: "#0f172a", start_url: ".",
+        icons: [{ src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTRiOGE2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwLjI0IDguMTZjLjQtLjM2Ljc2LS43NiAxLjA0LTEuMjItLjQ2LjItMSAuMzYtMS41NC40NGEyLjUyIDIuNTIgMCAwIDAgMS4xOC0xLjQ4Yy0uNTEuMy0xLjA3LjUyLTEuNjYuNjRhMi41IDIuNSAwIDAgMC00LjMzIDEuNjRjMCAuMiAwIC40LjA2LjU4LTQuMDgtLjItNy43LTIuMTYtMTAuMTQtNS4xNGEyLjUgMi41IDAgMCAwIC43NyAzLjMzYy0uNDIgMC0uODItLjEyLTEuMTQtLjMyHYuMDNjMCAxLjIzLjg4IDIuMjYgMi4wNCAyLjQ4LS4yLjA2LS40NC4wOC0uNjYuMDgtLjE4IDAtLjM0LS4wMi0uNTEtLjA2LjMyIDEgMS4yNiAxLjczIDIuMzYgMS43NWE1LjA2IDUuMDYgMCAwIDEtMy4xMiAxLjA4Yy0uMiAwLS40IDAtLjYtLjA0IDEuMTEuNzIgMi40NCAxLjE0IDMuODggMS4xNCA0LjY2IDAgNy4yMi0zLjg2IDcuMjItNy4yMiAwLS4xIDAtLjItLjAyLS4zLjQ4LS4zNi45Mi0uOCAxLjI2LTEuMyIvPjwvc3ZnPg==", sizes: "192x192", type: "image/svg+xml" }]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      let link = document.querySelector('link[rel="manifest"]');
+      if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link); }
+      link.href = manifestURL;
+      
+      let metaTheme = document.querySelector('meta[name="theme-color"]');
+      if(!metaTheme) { metaTheme = document.createElement('meta'); metaTheme.name = 'theme-color'; document.head.appendChild(metaTheme); }
+      metaTheme.content = '#020617';
+    } catch (e) {}
+  }, []);
+
+  // INIT Auth & DATA SYNC
+  useEffect(() => {
+    if (!auth) { setNotes(initialNotes); setActiveNoteId(initialNotes[0].id); setIsInitializing(false); return; }
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+      } catch (err) {}
+    };
+    initAuth();
+    
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
+      if(authUser && db) {
+        onSnapshot(query(collection(db, 'artifacts', appId, 'users', authUser.uid, 'notes')), 
+          (snapshot) => {
+            const notesData = snapshot.docs.map(doc => {
+              const data = doc.data();
+              if (!data.plainText && data.plainText !== '') {
+                if (data.type === 'mindmap') {
+                   try { data.plainText = JSON.parse(data.content).map(n => n.text).join(' '); } catch(e) { data.plainText = ''; }
+                } else {
+                   data.plainText = stripHtml(data.content || '');
+                }
+              }
+              return { id: doc.id, ...data };
+            });
+
+            if (notesData.length === 0 && isInitializing) {
+              initialNotes.forEach(async (note) => await setDoc(doc(db, 'artifacts', appId, 'users', authUser.uid, 'notes', note.id), note));
+            } else {
+              notesData.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+              setNotes(notesData);
+              if (isInitializing && notesData.length > 0) setActiveNoteId(notesData[0].id);
+            }
+            setIsInitializing(false);
+          }, () => setSyncStatus('error')
+        );
+
+        onSnapshot(doc(db, 'artifacts', appId, 'users', authUser.uid, 'settings', 'data'), 
+          (docSnap) => { 
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
+              if (data.appSettings) setAppSettings(prev => ({...prev, ...data.appSettings}));
+            }
+          }
+        );
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // SAVES
+  useEffect(() => {
+    if (!user || !db || syncStatus !== 'saving' || ['agenda', 'graph'].includes(viewMode)) return;
+    const activeNote = notes.find(n => n.id === activeNoteId);
+    if (!activeNote) return;
+    const timeoutId = setTimeout(async () => {
+      try { await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', activeNote.id), activeNote); setSyncStatus('synced'); } catch (error) {}
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [notes, activeNoteId, user, syncStatus, viewMode]);
+
+  useEffect(() => {
+    if (!user || !db || syncStatus !== 'saving') return;
+    const timeoutId = setTimeout(async () => {
+      try { await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'data'), { agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true }); setSyncStatus('synced'); } catch (error) {}
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [agendaEvents, appSettings, user, syncStatus]);
+
+  const activeNote = notes.find(n => n.id === activeNoteId);
+  
+  // A note is locked if it has 'isLocked' flag AND its ID is not in our session unlocked set
+  const isNoteLocked = activeNote && activeNote.isLocked && !unlockedNotes.has(activeNote.id);
+
+  // --- ACTIONS ---
+  const createDocument = (type = 'note', customTitle = null, customContent = null, customFolder = 'Général') => {
+    const newDoc = {
+      id: generateId(),
+      title: customTitle || (type === 'note' ? 'Nouvelle Note' : 'Nouvelle Carte'),
+      type: type,
+      folder: customFolder,
+      content: customContent || (type === 'note' ? '<h1>Nouvelle Note</h1><p><br></p>' : JSON.stringify([{id:'root', parentId: null, text:''}])),
+      plainText: type === 'note' ? 'Nouvelle Note' : '',
+      isLocked: false,
+      lockPassword: '',
+      lastModified: Date.now()
+    };
+    setNotes([newDoc, ...notes]);
+    setActiveNoteId(newDoc.id);
+    setViewMode(type === 'mindmap' ? 'mindmap' : 'editor');
+    setSyncStatus('saving');
+    setExpandedFolders(prev => ({...prev, [customFolder]: true}));
+    if (window.innerWidth < 768) setLeftSidebarOpen(false);
+  };
+
+  const openDailyNote = () => {
+    const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const formattedTitle = `Journal - ${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}`;
+    const existing = notes.find(n => n.title === formattedTitle);
+    
+    if (existing) {
+      setActiveNoteId(existing.id);
+      setViewMode('editor');
+    } else {
+      createDocument('note', formattedTitle, `<h2>🎯 Focus du jour</h2><ul><li><br></li></ul><h2>📝 Réflexions</h2><p><br></p>`, 'Journal');
+    }
+    setSidebarTab('files');
+    if (window.innerWidth < 768) setLeftSidebarOpen(false);
+  };
+
+  const updateActiveNote = useCallback((updates) => {
+    setNotes(prevNotes => prevNotes.map(note => {
+      if (note.id === activeNoteId) {
+        const updatedNote = { ...note, ...updates, lastModified: Date.now() };
+        if (updates.content !== undefined && updates.plainText === undefined) {
+           if (note.type !== 'mindmap') {
+              updatedNote.plainText = stripHtml(updates.content);
+           }
+        }
+        return updatedNote;
+      }
+      return note;
+    }));
+    setSyncStatus('saving');
+  }, [activeNoteId]);
+
+  const deleteNote = async (id) => {
+    const updatedNotes = notes.filter(n => n.id !== id);
+    setNotes(updatedNotes);
+    if (activeNoteId === id) setActiveNoteId(updatedNotes.length > 0 ? updatedNotes[0].id : null);
+    if (user && db) { try { await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', id)); } catch (e) {} }
+  };
+
+  const navigateToLink = (titleQuery) => {
+    const queryStr = (titleQuery || '').toLowerCase();
+    const existingNote = notes.find(n => (n.title || '').toLowerCase() === queryStr);
+    if (existingNote) {
+      if (existingNote.isLocked && !unlockedNotes.has(existingNote.id)) { alert("Note verrouillée."); return; }
+      setActiveNoteId(existingNote.id);
+      setViewMode(existingNote.type === 'mindmap' ? 'mindmap' : 'editor');
+    } else {
+      createDocument('note', titleQuery, `<h1>${titleQuery}</h1><p><br></p>`);
+    }
+    if (window.innerWidth < 768) setLeftSidebarOpen(false);
+  };
+
+  const handleLockConfig = (e) => {
+    e.preventDefault();
+    if (!activeNote) return;
+
+    if (activeNote.isLocked) {
+      if (lockPasswordInput === activeNote.lockPassword) {
+        updateActiveNote({ isLocked: false, lockPassword: '' });
+        setLockPasswordInput('');
+        setShowLockConfig(false);
+      } else {
+        alert("Mot de passe incorrect.");
+      }
+    } else {
+      if (lockPasswordInput.length > 0) {
+        updateActiveNote({ isLocked: true, lockPassword: lockPasswordInput });
+        setLockPasswordInput('');
+        setShowLockConfig(false);
+      }
+    }
+  };
+
+  // FILTER & O(1) DEEP SEARCH (SECURED)
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery) return notes.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+    const q = searchQuery.toLowerCase();
+    return notes.filter(n => {
+      const isSecured = n.isLocked && !unlockedNotes.has(n.id);
+      if (isSecured) return (n.title || '').toLowerCase().includes(q);
+      return (n.title || '').toLowerCase().includes(q) || (n.plainText || '').toLowerCase().includes(q);
+    }).sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0)).slice(0, 100); 
+  }, [notes, searchQuery, unlockedNotes]);
+
+  const textNotes = useMemo(() => filteredNotes.filter(n => !n.type || n.type === 'note'), [filteredNotes]);
+  const mindmapsList = useMemo(() => filteredNotes.filter(n => n.type === 'mindmap'), [filteredNotes]);
+
+  // DYNAMIC FOLDER EXTRACTION
+  const folders = useMemo(() => {
+    const grouped = {};
+    textNotes.forEach(note => {
+      const f = note.folder || 'Général';
+      if (!grouped[f]) grouped[f] = [];
+      grouped[f].push(note);
+    });
+    return grouped;
+  }, [textNotes]);
+  
+  const allFolderNames = useMemo(() => Object.keys(folders).sort(), [folders]);
+
+  // BACKLINKS CALCULATION (EXPLICIT + IMPLICIT)
+  const { explicitBacklinks, implicitBacklinks } = useMemo(() => {
+    const explicit = [];
+    const implicit = [];
+    if (!activeNote || viewMode === 'graph' || viewMode === 'agenda') return { explicitBacklinks: explicit, implicitBacklinks: implicit };
+    
+    const activeTitleLower = (activeNote.title || '').toLowerCase();
+    if (!activeTitleLower) return { explicitBacklinks: explicit, implicitBacklinks: implicit };
+
+    notes.forEach(n => {
+      if (n.id === activeNote.id) return;
+      if (n.isLocked && !unlockedNotes.has(n.id)) return; 
+
+      const explicitLinks = extractLinks(n.content).map(l => l.toLowerCase());
+      if (explicitLinks.includes(activeTitleLower)) {
+        explicit.push(n);
+      } else {
+        if (activeNote.title.length > 3 && n.plainText) {
+           const regex = new RegExp(`(?:^|\\W)${escapeRegExp(activeNote.title)}(?:$|\\W)`, 'i');
+           if (regex.test(n.plainText)) {
+              implicit.push(n);
+           }
+        }
+      }
+    });
+    return { explicitBacklinks: explicit, implicitBacklinks: implicit };
+  }, [notes, activeNote, viewMode, unlockedNotes]);
+
+  if (isInitializing) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><Feather className="animate-pulse" size={48} /></div>;
+
+  return (
+    <div className={`flex h-screen w-full bg-slate-950 text-slate-300 overflow-hidden selection:bg-teal-500/30 ${appSettings.fontFamily}`}>
+      
+      {leftSidebarOpen && <div className="fixed inset-0 bg-slate-950/80 z-40 lg:hidden backdrop-blur-sm" onClick={() => setLeftSidebarOpen(false)} />}
+
+      {/* --- LEFT SIDEBAR --- */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-50
+        w-[85vw] max-w-[320px] lg:w-80 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none
+        ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'}
+        ${!leftSidebarOpen && 'lg:w-0 lg:border-none overflow-hidden'}
+      `}>
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
+          <div className="flex items-center gap-3 font-bold text-white">
+            <div className="text-teal-400"><Feather size={24} /></div>
+            <span className="tracking-wide text-xl font-serif">Ezra Park</span>
+          </div>
+          <div className="flex gap-2" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)} className={`p-2 transition-colors rounded-xl border ${showSettings ? 'bg-teal-500/20 text-teal-400 border-teal-500/50' : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'}`}><Settings size={18} /></button>
+            
+            {showSettings && (
+              <div className="absolute left-64 top-16 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-5 z-50">
+                <h4 className="font-bold text-white flex items-center gap-2 mb-4"><Type size={16} className="text-teal-400"/> Typographie Globale</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Police</label>
+                    <div className="flex gap-2">
+                      {[{c:'font-sans', l:'Sans'}, {c:'font-serif', l:'Serif'}, {c:'font-mono', l:'Mono'}].map(f => (
+                        <button key={f.c} onClick={() => { setAppSettings(p => ({...p, fontFamily: f.c})); setSyncStatus('saving'); }} className={`flex-1 py-2 text-xs rounded-lg border ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400'}`}>{f.l}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Espacement</label>
+                    <div className="flex gap-2">
+                      {[{c:'leading-snug', l:'Serré'}, {c:'leading-relaxed', l:'Normal'}, {c:'leading-loose', l:'Aéré'}].map(l => (
+                        <button key={l.c} onClick={() => { setAppSettings(p => ({...p, lineSpacing: l.c})); setSyncStatus('saving'); }} className={`flex-1 py-2 text-xs rounded-lg border font-medium ${appSettings.lineSpacing === l.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400'}`}>{l.l}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <button className="lg:hidden p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl" onClick={() => setLeftSidebarOpen(false)}><X size={20} /></button>
+          </div>
+        </div>
+
+        <div className="p-4 shrink-0 border-b border-slate-800/50 font-sans">
+          <div className="grid grid-cols-3 gap-2 bg-slate-950 rounded-2xl p-2 border border-slate-800">
+            <button onClick={() => setSidebarTab('files')} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'files' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><FileText size={18}/> Notes</button>
+            <button onClick={() => setSidebarTab('mindmaps')} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'mindmaps' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><Network size={18}/> Cartes</button>
+            <button onClick={() => { setSidebarTab('agenda'); setViewMode('agenda'); if(window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'agenda' ? 'bg-teal-600/20 text-teal-400 shadow border border-teal-500/30' : 'text-slate-500 hover:text-slate-300'}`}><Calendar size={18}/> Agenda</button>
+          </div>
+        </div>
+
+        <div className="p-5 shrink-0 font-sans">
+          <button onClick={openDailyNote} className="w-full mb-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors border border-slate-700 shadow-sm">
+             <BookOpen size={16} /> Mon Journal
+          </button>
+          {(sidebarTab === 'files' || sidebarTab === 'mindmaps') && (
+            <button onClick={() => createDocument(sidebarTab === 'files' ? 'note' : 'mindmap')} className="w-full mb-5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-teal-500/20">
+              <Plus size={18} /> {sidebarTab === 'files' ? 'Créer une Note' : 'Créer une Carte'}
+            </button>
+          )}
+          {sidebarTab !== 'agenda' && (
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-teal-400 transition-colors" size={16} />
+              <input type="text" placeholder="Recherche (Texte masqué si cadenas)..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 text-[14px] text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none border border-slate-800 focus:border-teal-500/50 transition-all placeholder-slate-600 shadow-inner" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 custom-scrollbar pb-6 font-sans">
+          {sidebarTab === 'files' && (
+            searchQuery ? (
+              // VUE DE RECHERCHE (FLAT LIST POUR ÉVITER LE BUG DES DOSSIERS FERMÉS)
+              <div className="space-y-2 mt-2">
+                <h4 className="text-[11px] font-bold text-teal-500 uppercase tracking-wider mb-3 pl-2">Résultats de recherche ({textNotes.length})</h4>
+                {textNotes.length === 0 && <p className="text-center text-sm text-slate-600 mt-6 font-serif italic">Aucune note trouvée.</p>}
+                {textNotes.map(note => {
+                  const isSelected = activeNoteId === note.id && !['agenda', 'graph'].includes(viewMode);
+                  const isSecured = note.isLocked && !unlockedNotes.has(note.id);
+                  let snippetHtml = null;
+                  if (note.plainText && !isSecured) snippetHtml = getSnippet(note.plainText, searchQuery);
+
+                  return (
+                    <div key={note.id} onClick={() => { setActiveNoteId(note.id); setViewMode('editor'); if (window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-xl cursor-pointer transition-all flex items-start gap-3 group ${isSelected ? 'bg-teal-500/15 text-teal-300 shadow-sm border border-teal-500/30' : 'hover:bg-slate-800 text-slate-400 border border-transparent'}`}>
+                      {note.isLocked ? (
+                        <Lock size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-rose-400' : 'text-slate-500'}`} />
+                      ) : (
+                        <FileText size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                      )}
+                      <div className="flex-1 overflow-hidden">
+                        <span className="text-[13px] font-medium truncate block" dangerouslySetInnerHTML={{ __html: highlightTitle(note.title || 'Sans titre', searchQuery) }} />
+                        <span className="text-[10px] text-slate-500 block mt-0.5 opacity-80 uppercase tracking-wider">{note.folder || 'Général'}</span>
+                        {snippetHtml && (
+                          <span className="text-[11px] text-slate-400 mt-1.5 block leading-relaxed font-mono opacity-90 break-words" dangerouslySetInnerHTML={{__html: snippetHtml}}></span>
+                        )}
+                        {isSecured && !(note.title || '').toLowerCase().includes(searchQuery.toLowerCase()) && (
+                          <span className="text-[10px] text-rose-400/80 italic mt-1 block">🔒 Contenu masqué</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              // VUE NORMALE (DOSSIERS)
+              allFolderNames.map(folderName => (
+                <div key={folderName} className="mb-2">
+                  <div 
+                    onClick={() => setExpandedFolders(prev => ({...prev, [folderName]: !prev[folderName]}))}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2.5 rounded-xl text-slate-300 font-bold text-xs uppercase tracking-wider transition-colors select-none"
+                  >
+                    {expandedFolders[folderName] ? <ChevronDown size={14} className="text-slate-500"/> : <ChevronRight size={14} className="text-slate-500"/>}
+                    {expandedFolders[folderName] ? <FolderOpen size={14} className="text-teal-500"/> : <Folder size={14} className="text-teal-500"/>}
+                    {folderName}
+                  </div>
+                  
+                  {expandedFolders[folderName] && (
+                    <div className="pl-6 border-l-2 border-slate-800 ml-3 mt-1 space-y-1">
+                      {folders[folderName].map(note => {
+                        const isSelected = activeNoteId === note.id && !['agenda', 'graph'].includes(viewMode);
+                        const isSecured = note.isLocked && !unlockedNotes.has(note.id);
+
+                        return (
+                          <div key={note.id} onClick={() => { setActiveNoteId(note.id); setViewMode('editor'); if (window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`w-full text-left px-3 py-2.5 rounded-xl cursor-pointer transition-all flex items-start gap-3 group ${isSelected ? 'bg-teal-500/15 text-teal-300 shadow-sm border border-teal-500/30' : 'hover:bg-slate-800 text-slate-400 border border-transparent'}`}>
+                            {note.isLocked ? (
+                              <Lock size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-rose-400' : 'text-slate-500'}`} />
+                            ) : (
+                              <FileText size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-teal-400' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                            )}
+                            <div className="flex-1 overflow-hidden">
+                              <span className="text-[13px] font-medium truncate block" dangerouslySetInnerHTML={{ __html: note.title || 'Sans titre' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))
+            )
+          )}
+
+          {sidebarTab === 'mindmaps' && (
+            <div className="space-y-1 mt-2">
+              {searchQuery && <h4 className="text-[11px] font-bold text-teal-500 uppercase tracking-wider mb-3 pl-2">Résultats ({mindmapsList.length})</h4>}
+              {mindmapsList.length === 0 && <p className="text-center text-sm text-slate-600 mt-6 font-serif italic">Aucune carte trouvée.</p>}
+              {mindmapsList.map(note => {
+                const isSelected = activeNoteId === note.id && viewMode === 'mindmap';
+                const isSecured = note.isLocked && !unlockedNotes.has(note.id);
+                let snippetHtml = null;
+                if (searchQuery && note.plainText && !isSecured) snippetHtml = getSnippet(note.plainText, searchQuery);
+
+                return (
+                  <div key={note.id} onClick={() => { setActiveNoteId(note.id); setViewMode('mindmap'); if (window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl cursor-pointer transition-all flex items-start gap-3 group ${isSelected ? 'bg-amber-500/15 text-amber-300 shadow-sm border border-amber-500/30' : 'hover:bg-slate-800 text-slate-400 border border-transparent'}`}>
+                    {note.isLocked ? (
+                       <Lock size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-rose-400' : 'text-slate-500'}`} />
+                    ) : (
+                       <Network size={14} className={`mt-0.5 shrink-0 ${isSelected ? 'text-amber-400' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                    )}
+                    <div className="flex-1 overflow-hidden">
+                      <span className="text-[13px] font-medium truncate block" dangerouslySetInnerHTML={{ __html: searchQuery ? highlightTitle(note.title || 'Carte sans titre', searchQuery) : (note.title || 'Carte sans titre') }} />
+                      {searchQuery && snippetHtml && (
+                        <span className="text-[11px] text-slate-400 mt-1.5 block leading-relaxed font-mono opacity-90 break-words" dangerouslySetInnerHTML={{__html: snippetHtml}}></span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Sync Status Footer */}
+        <div className="px-5 py-3 text-xs font-medium border-t border-slate-800 flex items-center justify-between bg-slate-950 shrink-0 font-sans">
+          <span className="text-slate-500">Cloud</span>
+          {syncStatus === 'synced' ? <span className="flex items-center gap-1.5 text-teal-500"><Cloud size={14} /> Synchronisé</span>
+          : syncStatus === 'saving' ? <span className="flex items-center gap-1.5 text-amber-500"><Save className="animate-pulse" size={14} /> Sauvegarde...</span>
+          : <span className="flex items-center gap-1.5 text-rose-500"><CloudOff size={14} /> Hors ligne</span>}
+        </div>
+      </div>
+
+      {/* --- CENTER WORKSPACE --- */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950">
+        
+        {/* HEADER */}
+        <div className="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-3 sm:px-5 shrink-0 z-20 shadow-sm font-sans">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setLeftSidebarOpen(true)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl lg:hidden"><Menu size={20} /></button>
+            {!leftSidebarOpen && <button onClick={() => setLeftSidebarOpen(true)} className="hidden lg:block p-2 text-slate-400 hover:text-white transition-colors"><SidebarOpen size={20} /></button>}
+          </div>
+
+          <div className="flex-1 flex justify-center overflow-hidden px-2">
+            {viewMode === 'agenda' ? (
+               <span className="text-sm md:text-base font-semibold text-teal-400 flex items-center gap-2 bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20"><Calendar size={16} /> Emploi du Temps</span>
+            ) : viewMode === 'graph' ? (
+               <span className="text-sm md:text-base font-semibold text-teal-400 flex items-center gap-2 bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20"><Network size={16} /> Second Cerveau</span>
+            ) : activeNote ? (
+              <div className="flex items-center gap-2 text-slate-300 w-full max-w-[400px] justify-center">
+                {activeNote.isLocked && !unlockedNotes.has(activeNote.id) ? (
+                   <Lock size={16} className="text-rose-500 shrink-0" />
+                ) : activeNote.type === 'mindmap' ? (
+                   <Network size={16} className="text-amber-500 shrink-0" /> 
+                ) : (
+                   <FileText size={16} className="text-teal-500 shrink-0" />
+                )}
+                {/* Editable Title only if unlocked */}
+                {['mindmap', 'editor'].includes(viewMode) && (!activeNote.isLocked || unlockedNotes.has(activeNote.id)) ? (
+                  <input type="text" value={activeNote.title || ''} onChange={(e) => updateActiveNote({ title: e.target.value })} className="bg-transparent outline-none border-b border-transparent hover:border-slate-600 focus:border-teal-500 px-1 w-full text-center text-base md:text-lg font-serif font-bold truncate" placeholder="Titre..." />
+                ) : (
+                  <span className="text-base md:text-lg font-serif font-bold truncate">{activeNote.title || 'Sans titre'}</span>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button onClick={() => setViewMode(viewMode === 'graph' ? 'editor' : 'graph')} className={`p-1.5 sm:p-2 rounded-xl transition-all ${viewMode === 'graph' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Graphe Cérébral"><Network size={18} /></button>
+
+            {/* Lock / Unlock Note Configuration */}
+            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+               <div className="relative" ref={lockConfigRef}>
+                 <button onClick={() => setShowLockConfig(!showLockConfig)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${activeNote.isLocked ? 'bg-rose-500/20 text-rose-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Sécurité de la note">{activeNote.isLocked ? <Lock size={18} /> : <Unlock size={18} />}</button>
+                 {showLockConfig && (
+                   <div className="absolute right-0 top-12 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-5 z-50">
+                      {activeNote.isLocked ? (
+                        <>
+                          <button onClick={() => {
+                            const newSet = new Set(unlockedNotes);
+                            newSet.delete(activeNote.id);
+                            setUnlockedNotes(newSet);
+                            setShowLockConfig(false);
+                          }} className="w-full bg-slate-800 hover:bg-slate-700 text-white rounded-xl p-2 font-bold text-sm mb-3">Verrouiller maintenant</button>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block border-t border-slate-700 pt-3">Retirer la protection</label>
+                        </>
+                      ) : (
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Définir un mot de passe</label>
+                      )}
+                      
+                      <form onSubmit={handleLockConfig} className="flex flex-col gap-2">
+                        <input type="password" value={lockPasswordInput} onChange={(e) => setLockPasswordInput(e.target.value)} placeholder="Mot de passe" className="w-full bg-slate-950 text-sm text-white rounded-xl p-2.5 border border-slate-800 outline-none focus:border-rose-500 font-mono tracking-widest text-center"/>
+                        <button type="submit" className={`w-full text-white rounded-xl p-2 font-bold text-sm transition-colors ${activeNote.isLocked ? 'bg-rose-600 hover:bg-rose-500' : 'bg-teal-600 hover:bg-teal-500'}`}>
+                          {activeNote.isLocked ? 'Valider' : 'Activer la sécurité'}
+                        </button>
+                      </form>
+                   </div>
+                 )}
+               </div>
+            )}
+            
+            {/* FOLDER CLASSIFICATION (NOW VISIBLE ON MOBILE) */}
+            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+               <div className="relative" ref={propertiesRef}>
+                 <button onClick={() => setShowProperties(!showProperties)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${showProperties ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Classer dans un dossier"><Folder size={18} /></button>
+                 {showProperties && (
+                   <div className="absolute right-0 top-12 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-5 z-50">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Classer dans le dossier</label>
+                      <div className="space-y-3">
+                        <select 
+                          value={activeNote.folder || 'Général'} 
+                          onChange={(e) => { updateActiveNote({ folder: e.target.value }); setShowProperties(false); setExpandedFolders(p => ({...p, [e.target.value]: true})); }}
+                          className="w-full bg-slate-950 text-sm text-white rounded-xl p-3 border border-slate-800 outline-none focus:border-teal-500"
+                        >
+                          {allFolderNames.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                        
+                        <div className="flex gap-2">
+                           <input 
+                             type="text" 
+                             id="new-folder-input"
+                             placeholder="Nouveau..." 
+                             className="w-full bg-slate-950 text-sm text-white rounded-xl p-2 border border-slate-800 outline-none focus:border-teal-500"
+                             onKeyDown={(e) => {
+                               if (e.key === 'Enter' && e.target.value.trim()) {
+                                 const val = e.target.value.trim();
+                                 updateActiveNote({ folder: val });
+                                 setExpandedFolders(p => ({...p, [val]: true}));
+                                 setShowProperties(false);
+                               }
+                             }}
+                           />
+                        </div>
+                      </div>
+                   </div>
+                 )}
+               </div>
+            )}
+            
+            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+               <button onClick={() => setRightSidebarOpen(!rightSidebarOpen)} className={`p-1.5 sm:p-2 rounded-xl transition-colors hidden lg:block ${rightSidebarOpen ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Ouvrir Rétroliens"><SidebarClose size={20} /></button>
+            )}
+            
+            {/* TRASH ICON (NOW VISIBLE ON MOBILE) */}
+            {activeNote && !['agenda', 'graph'].includes(viewMode) && <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors ml-1"><Trash2 size={18} /></button>}
+          </div>
+        </div>
+
+        {/* WORKSPACE CONTENT */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {viewMode === 'graph' ? (
+             <GraphView notes={notes} unlockedNotes={unlockedNotes} onNodeClick={(n) => { 
+                if (n.isLocked && !unlockedNotes.has(n.id)) {
+                  setActiveNoteId(n.id);
+                  setViewMode('editor');
+                } else {
+                  navigateToLink(n.title); 
+                  setViewMode(n.type === 'mindmap' ? 'mindmap' : 'editor'); 
+                }
+             }} />
+          ) : viewMode === 'agenda' ? (
+            <SimpleAgenda agendaEvents={agendaEvents} updateAgendaEvents={(data) => { setAgendaEvents(data); setSyncStatus('saving'); }} />
+          ) : isNoteLocked ? (
+            <PasswordPrompt key={activeNote.id} note={activeNote} onUnlock={(id) => {
+              const newSet = new Set(unlockedNotes);
+              newSet.add(id);
+              setUnlockedNotes(newSet);
+            }} />
+          ) : viewMode === 'mindmap' && activeNote ? (
+            <MindMapCanvas note={activeNote} updateNote={updateActiveNote} navigateToLink={navigateToLink} searchQuery={searchQuery} />
+          ) : activeNote ? (
+            <div className="flex w-full h-full">
+              <RichTextEditor key={activeNote.id} note={activeNote} updateNote={updateActiveNote} appSettings={appSettings} navigateToLink={navigateToLink} searchQuery={searchQuery} />
+              
+              {/* RIGHT SIDEBAR (OBSIDIAN BACKLINKS) - ADAPTED FOR MOBILE */}
+              {rightSidebarOpen && (
+                <div className="absolute lg:relative right-0 top-0 bottom-0 w-72 h-full bg-slate-900 border-l border-slate-800 flex flex-col z-30 shrink-0 shadow-2xl lg:shadow-none font-sans">
+                  
+                  {/* Close button inside sidebar for mobile */}
+                  <button className="lg:hidden absolute top-4 right-4 text-slate-400 hover:text-white" onClick={() => setRightSidebarOpen(false)}><X size={20}/></button>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6 pt-12 lg:pt-5">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><LinkIcon size={14} className="text-teal-500"/> Mentions Liées ({explicitBacklinks.length})</h4>
+                      {explicitBacklinks.length === 0 ? (
+                        <p className="text-xs text-slate-600 bg-slate-950 p-4 rounded-xl border border-slate-800/50 text-center italic">Aucun lien direct.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {explicitBacklinks.map((b, idx) => (
+                            <div key={`back-${idx}`} onClick={() => {
+                                if (b.isLocked && !unlockedNotes.has(b.id)) { alert("Note verrouillée."); return;}
+                                navigateToLink(b.title);
+                                if (window.innerWidth < 1024) setRightSidebarOpen(false);
+                              }} 
+                              className="bg-slate-950 border border-slate-800 hover:border-teal-500/40 p-4 rounded-xl cursor-pointer group transition-colors shadow-sm">
+                              <h5 className={`text-sm font-semibold flex items-center gap-2 mb-1 ${b.isLocked ? 'text-rose-400' : b.type === 'mindmap' ? 'text-amber-400' : 'text-teal-400'}`}>
+                                {b.isLocked ? <Lock size={14} /> : b.type === 'mindmap' ? <Network size={14} /> : <FileText size={14} />} {b.title}
+                              </h5>
+                              <p className="text-[10px] text-slate-500 font-mono opacity-80 group-hover:opacity-100">Mention explicite via [[ ]]</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><Search size={14} className="text-purple-500"/> Mentions Non Liées ({implicitBacklinks.length})</h4>
+                      {implicitBacklinks.length === 0 ? (
+                        <p className="text-xs text-slate-600 bg-slate-950 p-4 rounded-xl border border-slate-800/50 text-center italic">Aucune mention découverte.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {implicitBacklinks.map((b, idx) => (
+                            <div key={`impl-${idx}`} onClick={() => {
+                                if (b.isLocked && !unlockedNotes.has(b.id)) { alert("Note verrouillée."); return;}
+                                navigateToLink(b.title);
+                                if (window.innerWidth < 1024) setRightSidebarOpen(false);
+                              }} 
+                              className="bg-slate-950 border border-slate-800 hover:border-purple-500/40 p-4 rounded-xl cursor-pointer group transition-colors shadow-sm">
+                              <h5 className={`text-sm font-semibold flex items-center gap-2 mb-1 text-slate-300 group-hover:text-purple-400 transition-colors`}>
+                                {b.isLocked ? <Lock size={14} /> : b.type === 'mindmap' ? <Network size={14} /> : <FileText size={14} />} {b.title}
+                              </h5>
+                              <p className="text-[10px] text-slate-500 font-mono opacity-80 group-hover:opacity-100">Cité naturellement dans le texte</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 px-4 font-sans bg-slate-950">
+              <div className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-col items-center text-center max-w-md w-full relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-purple-500"></div>
+                <Feather size={56} className="mb-6 text-teal-500/40" strokeWidth={1.5} />
+                <h2 className="text-3xl font-serif font-bold text-white mb-3 tracking-wide">Ezra Park</h2>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed font-medium">L'élégance de la pensée structurée. Second Cerveau connecté.</p>
+                <div className="flex flex-col gap-3 w-full">
+                  <button onClick={() => createDocument('note')} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20"><Plus size={18} /> Nouvelle Note</button>
+                  <button onClick={() => createDocument('mindmap')} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all border border-slate-700"><Network size={18} /> Nouvelle Carte</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+        ::selection { background-color: rgba(20, 184, 166, 0.3); color: white; }
+        
+        /* WYSIWYG EDITOR CSS */
+        .ezra-editor { padding-bottom: 200px; }
+        .ezra-editor h1 { font-family: ui-serif, Georgia, serif; font-size: 2.5em; font-weight: 800; margin-top: 1em; margin-bottom: 0.5em; letter-spacing: -0.02em; color: white; }
+        .ezra-editor h2 { font-family: ui-serif, Georgia, serif; font-size: 1.8em; font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.5); padding-bottom: 0.2em; }
+        .ezra-editor h3 { font-family: ui-serif, Georgia, serif; font-size: 1.4em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: #e2e8f0; }
+        .ezra-editor ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        .ezra-editor ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+        .ezra-editor li { margin-bottom: 0.3em; }
+        .ezra-editor p { margin-bottom: 0.8em; }
+        .ezra-editor blockquote { border-left: 4px solid #14b8a6; padding-left: 1em; margin: 1em 0; font-style: italic; color: #94a3b8; background: rgba(20,184,166,0.05); padding: 0.5em 1em; border-radius: 0 8px 8px 0; font-family: ui-serif, Georgia, serif; font-size: 1.1em;}
+        .ezra-editor strong, .ezra-editor b { color: white; font-weight: 700; }
+        .ezra-editor:empty:before { content: attr(placeholder); color: #475569; pointer-events: none; display: block; }
+      `}} />
+    </div>
+  );
+}
+
+// --- SECURE ERROR BOUNDARY ---
+export default class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  resetApp = () => { this.setState({ hasError: false, error: null }); }
+  
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-screen w-full bg-slate-950 text-rose-400 items-center justify-center p-6 text-center font-sans">
+          <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 max-w-md shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
+            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur interceptée</h2>
+            <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">{this.state.error?.toString() || 'Erreur interne'}</p>
+            <button onClick={this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
+              <RefreshCw size={18}/> Relancer l'interface
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <MainApp />;
+  }
+}
+
+
