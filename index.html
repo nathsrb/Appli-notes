@@ -10,12 +10,12 @@
     <meta name="theme-color" content="#020617">
 
     <!-- CHARGEMENT CLASSIQUE (CDN) POUR COMPATIBILITÉ TOTALE SAFARI/iOS -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     
-    <!-- CORRECTION DU BUG SAFARI/LUCIDE : Les versions UMD de Lucide cherchent 'window.react' au lieu de 'window.React' -->
+    <!-- Configuration React pour Lucide -->
     <script>window.react = window.React;</script>
-    <script crossorigin src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.min.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
     
     <!-- Firebase Officiel (Version Compatibilité Globale) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -26,6 +26,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
+      body { background-color: #020617; /* Sécurité pour éviter le fond clair si crash */ }
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
@@ -49,18 +50,65 @@
     <div id="root"></div>
 
     <script type="text/babel">
-// Extraction des librairies depuis les variables globales (Compatibilité Safari)
+// Extraction des librairies (Compatibilité Safari)
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 const { createRoot } = ReactDOM;
 
-// CORRECTION : LucideReact avec majuscule
-const { 
-  FileText, Search, Plus, Network, Trash2, Menu, X, Folder, Save, Cloud, CloudOff, 
-  SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Target,
-  CornerDownRight, AlignLeft, BookOpen, Bold, Italic, Underline, List, ListOrdered, 
-  Heading1, Heading2, Heading3, CheckSquare, RefreshCw, Feather, Settings, Type, Edit3, 
-  Link: LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid, User, LogOut, Mail, Trash, RotateCcw, AlertTriangle
-} = window.LucideReact;
+// --- SYSTÈME ANTI-CRASH POUR LES ICÔNES (FALLBACK) ---
+// Si Safari bloque l'importation de Lucide, l'application utilisera des emojis au lieu d'afficher un écran bleu.
+const L = window.lucideReact || window.LucideReact || {};
+const safeIcon = (Component, FallbackEmoji) => Component ? Component : () => <span>{FallbackEmoji}</span>;
+
+const FileText = safeIcon(L.FileText, '📄');
+const Search = safeIcon(L.Search, '🔍');
+const Plus = safeIcon(L.Plus, '➕');
+const Network = safeIcon(L.Network, '🕸️');
+const Trash2 = safeIcon(L.Trash2, '🗑️');
+const Trash = safeIcon(L.Trash, '🗑️');
+const Menu = safeIcon(L.Menu, '☰');
+const X = safeIcon(L.X, '❌');
+const Folder = safeIcon(L.Folder, '📁');
+const FolderOpen = safeIcon(L.FolderOpen, '📂');
+const Save = safeIcon(L.Save, '💾');
+const Cloud = safeIcon(L.Cloud, '☁️');
+const CloudOff = safeIcon(L.CloudOff, '🌩️');
+const SidebarClose = safeIcon(L.SidebarClose, '⇥');
+const SidebarOpen = safeIcon(L.SidebarOpen, '⇤');
+const ChevronRight = safeIcon(L.ChevronRight, '▶');
+const ChevronDown = safeIcon(L.ChevronDown, '▼');
+const ZoomIn = safeIcon(L.ZoomIn, '🔍+');
+const ZoomOut = safeIcon(L.ZoomOut, '🔍-');
+const Maximize = safeIcon(L.Maximize, '🔲');
+const Target = safeIcon(L.Target, '🎯');
+const CornerDownRight = safeIcon(L.CornerDownRight, '↘');
+const AlignLeft = safeIcon(L.AlignLeft, '≣');
+const BookOpen = safeIcon(L.BookOpen, '📖');
+const Bold = safeIcon(L.Bold, 'B');
+const Italic = safeIcon(L.Italic, 'I');
+const Underline = safeIcon(L.Underline, 'U');
+const ListIcon = safeIcon(L.List, '•');
+const ListOrdered = safeIcon(L.ListOrdered, '1.');
+const Heading1 = safeIcon(L.Heading1, 'H1');
+const Heading2 = safeIcon(L.Heading2, 'H2');
+const Heading3 = safeIcon(L.Heading3, 'H3');
+const CheckSquare = safeIcon(L.CheckSquare, '☑');
+const RefreshCw = safeIcon(L.RefreshCw, '🔄');
+const Feather = safeIcon(L.Feather, '🪶');
+const Settings = safeIcon(L.Settings, '⚙️');
+const Type = safeIcon(L.Type, 'T');
+const Edit3 = safeIcon(L.Edit3, '✏️');
+const LinkIcon = safeIcon(L.Link, '🔗');
+const Info = safeIcon(L.Info, 'ℹ️');
+const Quote = safeIcon(L.Quote, '❞');
+const Undo = safeIcon(L.Undo, '↩');
+const Redo = safeIcon(L.Redo, '↪');
+const Lock = safeIcon(L.Lock, '🔒');
+const Unlock = safeIcon(L.Unlock, '🔓');
+const Calendar = safeIcon(L.Calendar, '📅');
+const UserIcon = safeIcon(L.User, '👤');
+const LogOut = safeIcon(L.LogOut, '🚪');
+const Mail = safeIcon(L.Mail, '✉️');
+const RotateCcw = safeIcon(L.RotateCcw, '↺');
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -146,7 +194,7 @@ function useOnClickOutside(ref, handler) {
 // --- FIREBASE SETUP ---
 let app, auth, db, appId;
 try {
-  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS (ETAPE 1 DU GUIDE) ⚠️
+  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS POUR ACTIVER LE CLOUD ⚠️
   const firebaseConfig = {
     apiKey: "VOTRE_CLE_API_ICI",
     authDomain: "votre-projet.firebaseapp.com",
@@ -167,7 +215,7 @@ try {
 }
 
 // --- AUTHENTICATION SCREEN ---
-const AuthScreen = () => {
+const AuthScreen = ({ onGuestLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -177,7 +225,7 @@ const AuthScreen = () => {
   const handleAuth = async (e) => {
     e.preventDefault();
     if (!auth) {
-      setError("Erreur : Firebase n'est pas configuré. Veuillez insérer vos clés dans le code.");
+      setError("Firebase n'est pas configuré. Veuillez utiliser le Mode Invité ci-dessous.");
       return;
     }
     setLoading(true);
@@ -197,12 +245,12 @@ const AuthScreen = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-950 items-center justify-center p-4">
-      <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden">
+      <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden flex flex-col">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
         <div className="text-center mb-8">
           <Feather size={48} className="mx-auto mb-4 text-teal-500/40" strokeWidth={1.5} />
           <h2 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">Erza Spark</h2>
-          <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté et sécurisé.</p>
+          <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté.</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
@@ -224,14 +272,25 @@ const AuthScreen = () => {
           {error && <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium text-center">{error}</div>}
 
           <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-teal-500/20 mt-4 flex justify-center items-center gap-2 disabled:opacity-50">
-            {loading ? <RefreshCw className="animate-spin" size={18} /> : (isLogin ? "Se connecter" : "S'inscrire et commencer")}
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : (isLogin ? "Connexion Cloud" : "S'inscrire (Cloud)")}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-4 flex flex-col gap-3">
           <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-sm text-slate-400 hover:text-teal-400 transition-colors">
             {isLogin ? "Nouveau ici ? Créer un compte" : "Déjà membre ? Se connecter"}
           </button>
+          
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-bold tracking-wider">OU</span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button onClick={onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700">
+            <Save size={18} /> Continuer sans compte (Mode Local)
+          </button>
+          <p className="text-[10px] text-slate-500 text-center px-4">En mode local, vos notes sont sauvegardées uniquement dans la mémoire de ce téléphone.</p>
         </div>
       </div>
     </div>
@@ -239,7 +298,7 @@ const AuthScreen = () => {
 };
 
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Compatibilité Maximale :</strong> Fonctionne à 100% sur Safari iOS et tous les téléphones sans problème de chargement !</li><li><strong>Authentification Obligatoire :</strong> Vos données sont sauvegardées de façon sécurisée sous votre compte personnel.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes.</li><li><strong>Design Cartes Mentales :</strong> Plus lisibles, avec des contrôles de zoom accessibles.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local Ajouté :</strong> Vous pouvez tester l\'application sans créer de compte !</li><li><strong>Système Anti-Crash iOS :</strong> Si les icônes ne se chargent pas sur un ancien Safari, des émojis élégants prendront le relai. Plus aucun fond bleu !</li><li><strong>Authentification Optionnelle :</strong> Vos données peuvent être sauvegardées dans le Cloud ou sur l\'appareil.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes.</li></ul>';
 
 const initialNotes = [
   {
@@ -570,202 +629,6 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
   }, [nodes, edges, onNodeClick, unlockedNotes]);
 
   return (
-    <div className="w-full h-full bg-slate-950 overflow-hidden relative">
-      <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
-        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral 2.0</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites (Texte)</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-blue-500 border border-dashed border-slate-900"></div> Même Dossier</div>
-      </div>
-      <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-    </div>
-  );
-};
-
-
-// --- MIND MAP ENGINE (IMPROVED DESIGN) ---
-const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
-  const containerRef = useRef(null);
-  const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
-  const [selection, setSelection] = useState('root');
-  const [editingNodeId, setEditingNodeId] = useState(null);
-  
-  const dragState = useRef({ type: null }); 
-  const pinchState = useRef({ initialDist: 0, initialZoom: 1 });
-
-  const [nodes, setNodes] = useState(() => {
-    try {
-      const parsed = JSON.parse(note?.content || '[]');
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (!parsed.find(n => n.id === 'root')) parsed[0].id = 'root';
-        return parsed;
-      }
-    } catch (e) {}
-    return [{ id: 'root', parentId: null, text: 'Idée Centrale' }];
-  });
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const plainText = nodes.map(n => n.text).join(' ');
-      updateNote({ content: JSON.stringify(nodes), plainText });
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [nodes, updateNote]);
-
-  const layout = useMemo(() => {
-    try {
-      const W = 220; const H = 60; const gapX = 90; const gapY = 30; // Bigger and more spaced out nodes
-      const childrenMap = {};
-      nodes.forEach(n => childrenMap[n.id] = []);
-      nodes.forEach(n => { if (n.parentId && childrenMap[n.parentId]) childrenMap[n.parentId].push(n.id); });
-
-      const root = nodes.find(n => n.id === 'root') || nodes[0];
-      if (!root) return { positions: {} };
-
-      const nodeSizes = {};
-      const calcSubtreeHeight = (nodeId) => {
-        const children = childrenMap[nodeId] || [];
-        if (children.length === 0) { nodeSizes[nodeId] = H; return H; }
-        let totalHeight = 0;
-        for (let childId of children) totalHeight += calcSubtreeHeight(childId);
-        totalHeight += (children.length - 1) * gapY;
-        nodeSizes[nodeId] = Math.max(H, totalHeight);
-        return nodeSizes[nodeId];
-      };
-      calcSubtreeHeight(root.id);
-
-      const positions = {};
-      const assignCoordinates = (nodeId, x, centerY, depth) => {
-        const isRoot = depth === 0;
-        const nodeWidth = isRoot ? 260 : W;
-        positions[nodeId] = { x, y: centerY - (H / 2), width: nodeWidth, height: H, depth };
-
-        const children = childrenMap[nodeId] || [];
-        if (children.length === 0) return;
-        let startY = centerY - (nodeSizes[nodeId] / 2);
-        for (let childId of children) {
-          let childSubtreeHeight = nodeSizes[childId];
-          let childCenterY = startY + (childSubtreeHeight / 2);
-          assignCoordinates(childId, x + nodeWidth + gapX, childCenterY, depth + 1);
-          startY += childSubtreeHeight + gapY;
-        }
-      };
-      assignCoordinates(root.id, 0, 0, 0);
-      return { positions, childrenMap };
-    } catch (error) { return { positions: {} }; }
-  }, [nodes]);
-
-  const addNode = (parentId) => {
-    if (!parentId) return;
-    const newNode = { id: generateId(), parentId, text: '' };
-    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
-  };
-
-  const addSibling = (currentNodeId) => {
-    const currentNode = nodes.find(n => n.id === currentNodeId);
-    if (!currentNode || !currentNode.parentId) return;
-    const newNode = { id: generateId(), parentId: currentNode.parentId, text: '' };
-    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
-  };
-
-  const deleteNode = (nodeId) => {
-    const currentNode = nodes.find(n => n.id === nodeId);
-    if (!currentNode || !currentNode.parentId) return;
-    const toDelete = new Set([nodeId]);
-    const findChildren = (id) => { nodes.filter(n => n.parentId === id).forEach(c => { toDelete.add(c.id); findChildren(c.id); }); };
-    findChildren(nodeId);
-    setNodes(prev => prev.filter(n => !toDelete.has(n.id)));
-    setSelection(currentNode.parentId); 
-  };
-
-  const handleWheel = (e) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey || e.deltaY % 1 !== 0) { 
-      const newZoom = Math.min(Math.max(0.2, camera.zoom + (-e.deltaY * 0.005)), 3);
-      const rect = containerRef.current.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
-      setCamera({ x: mouseX - (mouseX - camera.x) * (newZoom / camera.zoom), y: mouseY - (mouseY - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
-    } else { 
-      setCamera(c => ({ ...c, x: c.x - e.deltaX, y: c.y - e.deltaY }));
-    }
-  };
-
-  const getTouchDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
-  const getTouchCenter = (touches, rect) => ({ x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left, y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top });
-
-  const onTouchStart = (e) => {
-    if (editingNodeId) return;
-    if (e.touches.length === 1) {
-      dragState.current = { type: 'pan', startX: e.touches[0].clientX, startY: e.touches[0].clientY, initCamX: camera.x, initCamY: camera.y };
-      setSelection(null);
-    } else if (e.touches.length === 2) {
-      dragState.current = { type: 'pinch' };
-      pinchState.current = { initialDist: getTouchDistance(e.touches), initialZoom: camera.zoom };
-    }
-  };
-
-  const onTouchMove = (e) => {
-    if (editingNodeId) return;
-    if (e.touches.length === 1 && dragState.current.type === 'pan') {
-      setCamera({ ...camera, x: dragState.current.initCamX + (e.touches[0].clientX - dragState.current.startX), y: dragState.current.initCamY + (e.touches[0].clientY - dragState.current.startY) });
-    } else if (e.touches.length === 2 && dragState.current.type === 'pinch') {
-      const scale = getTouchDistance(e.touches) / pinchState.current.initialDist;
-      const newZoom = Math.min(Math.max(0.2, pinchState.current.initialZoom * scale), 3);
-      if (containerRef.current) {
-        const center = getTouchCenter(e.touches, containerRef.current.getBoundingClientRect());
-        setCamera({ x: center.x - (center.x - camera.x) * (newZoom / camera.zoom), y: center.y - (center.y - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
-      }
-    }
-  };
-
-  const handlePointerDown = (e) => {
-    if (e.pointerType === 'touch' || editingNodeId) return; 
-    if (e.target === containerRef.current || e.target.tagName === 'svg') {
-      dragState.current = { type: 'pan', startX: e.clientX, startY: e.clientY, initCamX: camera.x, initCamY: camera.y };
-      setSelection(null);
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (e.pointerType === 'touch') return;
-    if (dragState.current.type === 'pan') {
-      setCamera({ ...camera, x: dragState.current.initCamX + (e.clientX - dragState.current.startX), y: dragState.current.initCamY + (e.clientY - dragState.current.startY) });
-    }
-  };
-
-  const drawEdges = () => {
-    const paths = [];
-    nodes.forEach(node => {
-      if (!node.parentId) return;
-      const pPos = layout.positions[node.parentId]; const cPos = layout.positions[node.id];
-      if (!pPos || !cPos) return;
-      const startX = pPos.x + pPos.width; const startY = pPos.y + (pPos.height / 2);
-      const endX = cPos.x; const endY = cPos.y + (cPos.height / 2);
-      const midX = startX + (endX - startX) / 2;
-      // Brighter connection lines for better design
-      paths.push(<path key={`e_${node.id}`} d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`} fill="none" stroke={pPos.depth === 0 ? "#14b8a6" : "#475569"} strokeWidth={pPos.depth === 0 ? "3" : "2"} strokeOpacity="0.8" />);
-    });
-    return paths;
-  };
-
-  const renderNodeText = (text) => {
-    if (!text) return <span className="opacity-40 italic font-normal">Idée...</span>;
-    let displayedText = text;
-    if (searchQuery) {
-      displayedText = highlightTitle(text, searchQuery);
-    }
-    const parts = displayedText.split(/(\[\[.*?\]\])/g);
-    return parts.map((part, i) => {
-      const match = part.match(/\[\[(.*?)\]\]/);
-      if (match) {
-        const linkDest = match[1].replace(/<mark[^>]*>|<\/mark>/g, '');
-        return (<span key={i} className="text-teal-300 font-bold underline cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); navigateToLink(linkDest); }} dangerouslySetInnerHTML={{__html: part}} />);
-      }
-      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
-    });
-  };
-
-  return (
     <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
       
@@ -972,7 +835,7 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
         
         <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
         
-        <button onClick={(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><List size={18}/></button>
+        <button onClick={(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><ListIcon size={18}/></button>
         <button onClick={(e) => execCmd(e, 'insertOrderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste numérotée"><ListOrdered size={18}/></button>
         <button onClick={insertCheckbox} className="p-2 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors" title="Case à cocher"><CheckSquare size={18}/></button>
         
@@ -1011,12 +874,10 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
 
 
 // --- MAIN APP (POST-LOGIN) ---
-function MainApp({ user }) {
+function MainApp({ user, onLogout }) {
   const [notes, setNotes] = useState([]);
   
-  // Matrix/Agenda State
   const [agendaEvents, setAgendaEvents] = useState([]);
-  
   const [activeNoteId, setActiveNoteId] = useState(null);
   const [viewMode, setViewMode] = useState('editor'); 
   const [searchQuery, setSearchQuery] = useState('');
@@ -1028,7 +889,6 @@ function MainApp({ user }) {
   const [isInitializing, setIsInitializing] = useState(true);
   
   const [appSettings, setAppSettings] = useState({ fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed' });
-  
   const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
 
   const propertiesRef = useRef(null);
@@ -1046,11 +906,39 @@ function MainApp({ user }) {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // DATA SYNC
+  // DATA SYNC ON LOAD
   useEffect(() => {
-    if(!user || !db) return;
+    if (!user) return;
     
-    // In Compat mode, accessing the collection is slightly different
+    // GUEST MODE (LocalStorage)
+    if (user.isGuest) {
+      try {
+        const localNotesStr = localStorage.getItem('erza_notes');
+        let localNotes = localNotesStr ? JSON.parse(localNotesStr) : [];
+        
+        if (localNotes.length === 0) {
+           localNotes = initialNotes;
+           localStorage.setItem('erza_notes', JSON.stringify(localNotes));
+        }
+        
+        setNotes(localNotes);
+        if (localNotes.length > 0) setActiveNoteId(localNotes[0].id);
+
+        const localSettingsStr = localStorage.getItem('erza_settings');
+        if (localSettingsStr) {
+           const localSettings = JSON.parse(localSettingsStr);
+           if (localSettings.agenda) setAgendaEvents(localSettings.agenda);
+           if (localSettings.appSettings) setAppSettings(localSettings.appSettings);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      setIsInitializing(false);
+      return;
+    }
+
+    // CLOUD MODE (Firebase)
+    if (!db) return;
     const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
     
     const unsubscribeNotes = notesRef.onSnapshot(
@@ -1083,7 +971,6 @@ function MainApp({ user }) {
     const settingsRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data');
     const unsubscribeSettings = settingsRef.onSnapshot(
       (docSnap) => { 
-        // In v8/compat mode, 'exists' is a property, not a function
         if (docSnap.exists) {
           const data = docSnap.data();
           if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
@@ -1095,27 +982,42 @@ function MainApp({ user }) {
     return () => { unsubscribeNotes(); unsubscribeSettings(); }
   }, [user]);
 
-  // SAVES
+  // SAVES (NOTES)
   useEffect(() => {
-    if (!user || !db || syncStatus !== 'saving' || ['agenda', 'graph', 'trash', 'settings'].includes(viewMode)) return;
+    if (!user || syncStatus !== 'saving' || ['agenda', 'graph', 'trash', 'settings'].includes(viewMode)) return;
     const activeNote = notes.find(n => n.id === activeNoteId);
     if (!activeNote) return;
+
     const timeoutId = setTimeout(async () => {
-      try { 
-        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(activeNote.id).set(activeNote);
-        setSyncStatus('synced'); 
-      } catch (error) {}
+      if (user.isGuest) {
+         localStorage.setItem('erza_notes', JSON.stringify(notes));
+         setSyncStatus('synced');
+      } else {
+         if(!db) return;
+         try { 
+           await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(activeNote.id).set(activeNote);
+           setSyncStatus('synced'); 
+         } catch (error) {}
+      }
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [notes, activeNoteId, user, syncStatus, viewMode]);
 
+  // SAVES (SETTINGS & AGENDA)
   useEffect(() => {
-    if (!user || !db || syncStatus !== 'saving') return;
+    if (!user || syncStatus !== 'saving') return;
+    
     const timeoutId = setTimeout(async () => {
-      try { 
-        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true });
-        setSyncStatus('synced'); 
-      } catch (error) {}
+      if (user.isGuest) {
+         localStorage.setItem('erza_settings', JSON.stringify({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }));
+         setSyncStatus('synced');
+      } else {
+         if(!db) return;
+         try { 
+           await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true });
+           setSyncStatus('synced'); 
+         } catch (error) {}
+      }
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [agendaEvents, appSettings, user, syncStatus]);
@@ -1176,7 +1078,6 @@ function MainApp({ user }) {
   }, [activeNoteId]);
 
   const deleteNote = (id) => {
-    // Soft Delete
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
     setSyncStatus('saving');
     if (activeNoteId === id) setActiveNoteId(null);
@@ -1191,7 +1092,10 @@ function MainApp({ user }) {
     const updatedNotes = notes.filter(n => n.id !== id);
     setNotes(updatedNotes);
     if (activeNoteId === id) setActiveNoteId(null);
-    if (user && db) { 
+    
+    if (user.isGuest) {
+       localStorage.setItem('erza_notes', JSON.stringify(updatedNotes));
+    } else if (db) { 
         try { 
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
         } catch (e) {} 
@@ -1286,7 +1190,7 @@ function MainApp({ user }) {
     return { explicitBacklinks: explicit, implicitBacklinks: implicit };
   }, [notes, activeNote, viewMode, unlockedNotes]);
 
-  if (isInitializing) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><Feather className="animate-pulse" size={48} /></div>;
+  if (isInitializing) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><RefreshCw className="animate-spin" size={48} /></div>;
 
   return (
     <div className={`flex h-screen w-full bg-slate-950 text-slate-300 overflow-hidden selection:bg-teal-500/30 ${appSettings.fontFamily}`}>
@@ -1332,7 +1236,7 @@ function MainApp({ user }) {
           {['files', 'mindmaps'].includes(sidebarTab) && (
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 transition-colors" size={16} />
-              <input type="text" placeholder="Recherche (Texte masqué si cadenas)..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 text-[14px] text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none border border-slate-800 focus:border-teal-500/50 transition-all placeholder-slate-600 shadow-inner" />
+              <input type="text" placeholder="Recherche..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 text-[14px] text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none border border-slate-800 focus:border-teal-500/50 transition-all placeholder-slate-600 shadow-inner" />
             </div>
           )}
         </div>
@@ -1460,13 +1364,13 @@ function MainApp({ user }) {
         <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
            <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
-                <User size={16} />
+                <UserIcon size={16} />
               </div>
               <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
-                {user?.email || "Connecté"}
+                {user?.email || "Invité (Local)"}
               </div>
            </div>
-           <button onClick={() => auth && auth.signOut()} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
+           <button onClick={onLogout} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
              <LogOut size={16}/>
            </button>
         </div>
@@ -1617,7 +1521,7 @@ function MainApp({ user }) {
                     </div>
                     <div>
                        <h3 className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-3">Zone de Danger</h3>
-                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles et n'affectent que le compte <b>{user?.email}</b>.</p>
+                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles et n'affectent que le compte <b>{user?.email || 'Local'}</b>.</p>
                        <button onClick={() => {
                          if(window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT toutes les notes de la corbeille ?")) {
                            const trash = notes.filter(n => n.isDeleted);
@@ -1774,17 +1678,27 @@ const AppWrapper = () => {
     return () => unsubscribe();
   }, []);
 
+  const handleGuestLogin = () => {
+    setUser({ uid: 'local-guest', email: 'Invité (Local)', isGuest: true });
+  };
+
+  const handleLogout = () => {
+    if (user?.isGuest) {
+      setUser(null);
+    } else if (auth) {
+      auth.signOut();
+    }
+  };
+
   if (loading) {
     return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><Feather className="animate-pulse" size={48} /></div>;
   }
 
-  // Si non connecté -> Ecran d'authentification
   if (!user) {
-    return <AuthScreen />;
+    return <AuthScreen onGuestLogin={handleGuestLogin} />;
   }
 
-  // Si connecté -> L'application complète avec l'utilisateur
-  return <MainApp user={user} />;
+  return <MainApp user={user} onLogout={handleLogout} />;
 };
 
 // --- SECURE ERROR BOUNDARY ---
@@ -1794,10 +1708,11 @@ class ErrorBoundary extends React.Component {
   resetApp = () => { this.setState({ hasError: false, error: null }); }
   
   render() {
-1:379462215469:web:2c12802420c76b644d15a4            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur interceptée</h2>
+379462215469             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
+            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
             <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">{this.state.error?.toString() || 'Erreur interne'}</p>
             <button onClick={this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
-              <RefreshCw size={18}/> Relancer l'interface
+              <RefreshCw size={18}/> Recharger Erza Spark
             </button>
           </div>
         </div>
