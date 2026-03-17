@@ -7,23 +7,20 @@
     
     <!-- Tailwind CSS pour le design -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <meta name="theme-color" content="#020617">
 
-    <!-- Configuration des modules modernes (React, Lucide, Firebase Officiel Google) -->
-    <script>window.process = { env: { NODE_ENV: 'production' } };</script>
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://esm.sh/react@18.2.0",
-          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-          "lucide-react": "https://esm.sh/lucide-react@0.292.0",
-          "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-        }
-      }
-    </script>
+    <!-- CHARGEMENT CLASSIQUE (CDN) POUR COMPATIBILITÉ TOTALE SAFARI/iOS -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- CORRECTION DU BUG SAFARI/LUCIDE : Les versions UMD de Lucide cherchent 'window.react' au lieu de 'window.React' -->
+    <script>window.react = window.React;</script>
+    <script crossorigin src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.min.js"></script>
+    
+    <!-- Firebase Officiel (Version Compatibilité Globale) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <!-- Compilateur JSX intégré -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -51,19 +48,19 @@
 <body class="bg-slate-950 text-slate-300 m-0 p-0 overflow-hidden">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
-import { 
+    <script type="text/babel">
+// Extraction des librairies depuis les variables globales (Compatibilité Safari)
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { createRoot } = ReactDOM;
+
+// CORRECTION : LucideReact avec majuscule
+const { 
   FileText, Search, Plus, Network, Trash2, Menu, X, Folder, Save, Cloud, CloudOff, 
   SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Target,
   CornerDownRight, AlignLeft, BookOpen, Bold, Italic, Underline, List, ListOrdered, 
   Heading1, Heading2, Heading3, CheckSquare, RefreshCw, Feather, Settings, Type, Edit3, 
-  Link as LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid, User, LogOut, Mail, Trash, RotateCcw, AlertTriangle
-} from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+  Link: LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid, User, LogOut, Mail, Trash, RotateCcw, AlertTriangle
+} = window.LucideReact;
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -151,18 +148,20 @@ let app, auth, db, appId;
 try {
   // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS (ETAPE 1 DU GUIDE) ⚠️
   const firebaseConfig = {
-    apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
-    authDomain: "ezra-spark.firebaseapp.com",
-    projectId: "ezra-spark",
-    storageBucket: "ezra-spark.firebasestorage.app",
-    messagingSenderId: "379462215469",
-    appId: "1:379462215469:web:abcdef"
+    apiKey: "VOTRE_CLE_API_ICI",
+    authDomain: "votre-projet.firebaseapp.com",
+    projectId: "votre-projet",
+    storageBucket: "votre-projet.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
   };
 
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  appId = 'erza-spark-production';
+  if (firebaseConfig.apiKey !== "VOTRE_CLE_API_ICI") {
+    app = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    appId = 'erza-spark-production';
+  }
 } catch (error) {
   console.error("Erreur Firebase:", error);
 }
@@ -185,9 +184,9 @@ const AuthScreen = () => {
     setError('');
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await auth.signInWithEmailAndPassword(email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await auth.createUserWithEmailAndPassword(email, password);
       }
     } catch (err) {
       setError(err.message.includes('auth/') ? "Email ou mot de passe invalide." : err.message);
@@ -239,9 +238,8 @@ const AuthScreen = () => {
   );
 };
 
-
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Corbeille :</strong> Les notes supprimées vont maintenant dans la corbeille pour éviter les erreurs.</li><li><strong>Mot de passe oublié :</strong> Récupération possible par simulation d\'email !</li><li><strong>Design Cartes Mentales :</strong> Amélioré et boutons fixés en bas à droite pour toujours y avoir accès.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Compatibilité Maximale :</strong> Fonctionne à 100% sur Safari iOS et tous les téléphones sans problème de chargement !</li><li><strong>Authentification Obligatoire :</strong> Vos données sont sauvegardées de façon sécurisée sous votre compte personnel.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes.</li><li><strong>Design Cartes Mentales :</strong> Plus lisibles, avec des contrôles de zoom accessibles.</li></ul>';
 
 const initialNotes = [
   {
@@ -260,7 +258,6 @@ const initialNotes = [
 
 const WEEK_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
-// --- EISENHOWER EXPLICIT MATRIX ---
 const MATRIX_COLORS = [
   { class: 'bg-rose-500/10 border-rose-500/30 text-rose-200', bg: 'bg-rose-500', action: 'Faire', sub: 'Urgent & Important', icon: '🔴' },
   { class: 'bg-teal-500/10 border-teal-500/30 text-teal-200', bg: 'bg-teal-500', action: 'Planifier', sub: 'Important, Pas Urgent', icon: '🟢' },
@@ -359,7 +356,7 @@ const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
   const handleRecoverySubmit = (e) => {
     e.preventDefault();
     if (recoveryCodeInput === '0000') {
-       onUnlock(note.id, true); // true = reset password entirely
+       onUnlock(note.id, true);
     } else {
        alert('Code invalide.');
     }
@@ -575,9 +572,10 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
   return (
     <div className="w-full h-full bg-slate-950 overflow-hidden relative">
       <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
-        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral</div>
+        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral 2.0</div>
         <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites (Texte)</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-blue-500 border border-dashed border-slate-900"></div> Même Dossier</div>
       </div>
       <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
     </div>
@@ -771,7 +769,6 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
     <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
       
-      {/* FLOATING CONTROLS - FIXED AT BOTTOM RIGHT FOR EASY THUMB ACCESS */}
       <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
         <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomIn size={24}/></button>
         <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomOut size={24}/></button>
@@ -796,9 +793,8 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
           
           let nodeClass = "absolute flex items-center p-4 sm:p-5 transition-all cursor-pointer border-2 z-10 overflow-hidden ";
           
-          // Improved Mind Map Design
           if (isRoot) {
-            nodeClass += "bg-gradient-to-br from-teal-600 to-emerald-700 border-teal-400 rounded-full justify-center text-center shadow-[0_0_30px_rgba(20,184,166,0.3)] ";
+            nodeClass += "bg-gradient-to-br from-teal-600 to-emerald-700 border-teal-400 rounded-[50px] justify-center text-center shadow-[0_0_30px_rgba(20,184,166,0.3)] ";
             nodeClass += isSelected ? "ring-4 ring-teal-300/40 scale-105" : "hover:scale-105";
           } else {
             nodeClass += "bg-slate-800/95 border-slate-600 rounded-2xl justify-start shadow-xl backdrop-blur-sm ";
@@ -1054,7 +1050,10 @@ function MainApp({ user }) {
   useEffect(() => {
     if(!user || !db) return;
     
-    const unsubscribeNotes = onSnapshot(query(collection(db, 'artifacts', appId, 'users', user.uid, 'notes')), 
+    // In Compat mode, accessing the collection is slightly different
+    const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
+    
+    const unsubscribeNotes = notesRef.onSnapshot(
       (snapshot) => {
         const notesData = snapshot.docs.map(doc => {
           const data = doc.data();
@@ -1069,7 +1068,9 @@ function MainApp({ user }) {
         });
 
         if (notesData.length === 0 && isInitializing) {
-          initialNotes.forEach(async (note) => await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', note.id), note));
+          initialNotes.forEach(async (note) => {
+            await notesRef.doc(note.id).set(note);
+          });
         } else {
           notesData.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
           setNotes(notesData);
@@ -1079,9 +1080,11 @@ function MainApp({ user }) {
       }, () => setSyncStatus('error')
     );
 
-    const unsubscribeSettings = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'data'), 
+    const settingsRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data');
+    const unsubscribeSettings = settingsRef.onSnapshot(
       (docSnap) => { 
-        if (docSnap.exists()) {
+        // In v8/compat mode, 'exists' is a property, not a function
+        if (docSnap.exists) {
           const data = docSnap.data();
           if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
           if (data.appSettings) setAppSettings(prev => ({...prev, ...data.appSettings}));
@@ -1098,7 +1101,10 @@ function MainApp({ user }) {
     const activeNote = notes.find(n => n.id === activeNoteId);
     if (!activeNote) return;
     const timeoutId = setTimeout(async () => {
-      try { await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', activeNote.id), activeNote); setSyncStatus('synced'); } catch (error) {}
+      try { 
+        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(activeNote.id).set(activeNote);
+        setSyncStatus('synced'); 
+      } catch (error) {}
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [notes, activeNoteId, user, syncStatus, viewMode]);
@@ -1106,7 +1112,10 @@ function MainApp({ user }) {
   useEffect(() => {
     if (!user || !db || syncStatus !== 'saving') return;
     const timeoutId = setTimeout(async () => {
-      try { await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'data'), { agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true }); setSyncStatus('synced'); } catch (error) {}
+      try { 
+        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true });
+        setSyncStatus('synced'); 
+      } catch (error) {}
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [agendaEvents, appSettings, user, syncStatus]);
@@ -1182,7 +1191,11 @@ function MainApp({ user }) {
     const updatedNotes = notes.filter(n => n.id !== id);
     setNotes(updatedNotes);
     if (activeNoteId === id) setActiveNoteId(null);
-    if (user && db) { try { await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', id)); } catch (e) {} }
+    if (user && db) { 
+        try { 
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        } catch (e) {} 
+    }
   };
 
   const navigateToLink = (titleQuery) => {
@@ -1453,7 +1466,7 @@ function MainApp({ user }) {
                 {user?.email || "Connecté"}
               </div>
            </div>
-           <button onClick={() => auth && signOut(auth)} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
+           <button onClick={() => auth && auth.signOut()} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
              <LogOut size={16}/>
            </button>
         </div>
@@ -1573,7 +1586,7 @@ function MainApp({ user }) {
                <button onClick={() => setRightSidebarOpen(!rightSidebarOpen)} className={`p-1.5 sm:p-2 rounded-xl transition-colors hidden lg:block ${rightSidebarOpen ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Ouvrir Rétroliens"><SidebarClose size={20} /></button>
             )}
             
-            {/* TRASH ICON (NOW VISIBLE ON MOBILE) */}
+            {/* TRASH ICON */}
             {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors ml-1"><Trash2 size={18} /></button>}
           </div>
         </div>
@@ -1754,7 +1767,7 @@ const AppWrapper = () => {
 
   useEffect(() => {
     if (!auth) { setLoading(false); return; }
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
@@ -1781,12 +1794,7 @@ class ErrorBoundary extends React.Component {
   resetApp = () => { this.setState({ hasError: false, error: null }); }
   
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex h-screen w-full bg-slate-950 text-rose-400 items-center justify-center p-6 text-center font-sans">
-          <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 max-w-md shadow-2xl relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
-            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur interceptée</h2>
+1:379462215469:web:2c12802420c76b644d15a4            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur interceptée</h2>
             <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">{this.state.error?.toString() || 'Erreur interne'}</p>
             <button onClick={this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
               <RefreshCw size={18}/> Relancer l'interface
