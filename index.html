@@ -10,8 +10,8 @@
     <meta name="theme-color" content="#020617">
 
     <!-- CHARGEMENT REACT -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
     <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS) POUR ÉVITER TOUT CRASH SUR SAFARI iOS -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -48,70 +48,71 @@
 <body class="bg-slate-950 text-slate-300 m-0 p-0 overflow-hidden">
     <div id="root"></div>
 
-    <script type="text/babel">
-// Extraction des librairies React
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
-const { createRoot } = ReactDOM;
+    <script type="text/babel" data-type="module">
+// Extraction des librairies depuis les variables globales
+const { useState, useEffect, useRef, useMemo, useCallback } = window.React;
+const { createRoot } = window.ReactDOM;
 
-// --- SYSTÈME D'ICÔNES 100% INCASSABLE (CSS Uniquement, AUCUN crash JS possible) ---
-const createIcon = (iconClass) => ({ size = 24, className = "" }) => {
+// --- SYSTÈME D'ICÔNES INCASSABLE (PHOSPHOR CSS) ---
+// Cette méthode garantit 100% de compatibilité sur Safari en évitant les erreurs de variables globales
+const createIcon = (iconClass) => ({ size = 24, className = "", strokeWidth, ...props }) => {
   const sz = typeof size === 'number' ? size + 'px' : size;
-  return <i className={`${iconClass} ${className} flex items-center justify-center leading-none`} style={{ fontSize: sz, width: sz, height: sz }}></i>;
+  return <i className={`ph ${iconClass} ${className} flex items-center justify-center leading-none`} style={{ fontSize: sz, width: sz, height: sz }} {...props}></i>;
 };
 
-const FileText = createIcon('ph ph-file-text');
-const Search = createIcon('ph ph-magnifying-glass');
-const Plus = createIcon('ph ph-plus');
-const Network = createIcon('ph ph-graph');
-const Trash2 = createIcon('ph ph-trash');
-const Trash = createIcon('ph ph-trash');
-const Menu = createIcon('ph ph-list');
-const X = createIcon('ph ph-x');
-const Folder = createIcon('ph ph-folder');
-const FolderOpen = createIcon('ph ph-folder-open');
-const Save = createIcon('ph ph-floppy-disk');
-const Cloud = createIcon('ph ph-cloud');
-const CloudOff = createIcon('ph ph-cloud-slash');
-const SidebarClose = createIcon('ph ph-sidebar-simple');
-const SidebarOpen = createIcon('ph ph-list');
-const ChevronRight = createIcon('ph ph-caret-right');
-const ChevronDown = createIcon('ph ph-caret-down');
-const ZoomIn = createIcon('ph ph-magnifying-glass-plus');
-const ZoomOut = createIcon('ph ph-magnifying-glass-minus');
-const Maximize = createIcon('ph ph-corners-out');
-const Target = createIcon('ph ph-target');
-const CornerDownRight = createIcon('ph ph-arrow-bend-down-right');
-const AlignLeft = createIcon('ph ph-text-align-left');
-const BookOpen = createIcon('ph ph-book-open-text');
-const Bold = createIcon('ph ph-text-b');
-const Italic = createIcon('ph ph-text-italic');
-const Underline = createIcon('ph ph-text-underline');
-const ListIcon = createIcon('ph ph-list-bullets');
-const ListOrdered = createIcon('ph ph-list-numbers');
-const Heading1 = createIcon('ph ph-text-h-one');
-const Heading2 = createIcon('ph ph-text-h-two');
-const Heading3 = createIcon('ph ph-text-h-three');
-const CheckSquare = createIcon('ph ph-check-square');
-const RefreshCw = createIcon('ph ph-arrows-clockwise');
-const Feather = createIcon('ph ph-feather');
-const Settings = createIcon('ph ph-gear');
-const Type = createIcon('ph ph-text-t');
-const Edit3 = createIcon('ph ph-pencil-simple');
-const LinkIcon = createIcon('ph ph-link');
-const Info = createIcon('ph ph-info');
-const Quote = createIcon('ph ph-quotes');
-const Undo = createIcon('ph ph-arrow-u-up-left');
-const Redo = createIcon('ph ph-arrow-u-up-right');
-const Lock = createIcon('ph ph-lock-key');
-const Unlock = createIcon('ph ph-lock-key-open');
-const Calendar = createIcon('ph ph-calendar');
-const Palette = createIcon('ph ph-palette');
-const Grid = createIcon('ph ph-squares-four');
-const UserIcon = createIcon('ph ph-user');
-const LogOut = createIcon('ph ph-sign-out');
-const Mail = createIcon('ph ph-envelope-simple');
-const RotateCcw = createIcon('ph ph-clock-counter-clockwise');
-const AlertTriangle = createIcon('ph ph-warning');
+const FileText = createIcon('ph-file-text');
+const Search = createIcon('ph-magnifying-glass');
+const Plus = createIcon('ph-plus');
+const Network = createIcon('ph-graph');
+const Trash2 = createIcon('ph-trash');
+const Trash = createIcon('ph-trash');
+const Menu = createIcon('ph-list');
+const X = createIcon('ph-x');
+const Folder = createIcon('ph-folder');
+const FolderOpen = createIcon('ph-folder-open');
+const Save = createIcon('ph-floppy-disk');
+const Cloud = createIcon('ph-cloud');
+const CloudOff = createIcon('ph-cloud-slash');
+const SidebarClose = createIcon('ph-sidebar-simple');
+const SidebarOpen = createIcon('ph-list');
+const ChevronRight = createIcon('ph-caret-right');
+const ChevronDown = createIcon('ph-caret-down');
+const ZoomIn = createIcon('ph-magnifying-glass-plus');
+const ZoomOut = createIcon('ph-magnifying-glass-minus');
+const Maximize = createIcon('ph-corners-out');
+const Target = createIcon('ph-target');
+const CornerDownRight = createIcon('ph-arrow-bend-down-right');
+const AlignLeft = createIcon('ph-text-align-left');
+const BookOpen = createIcon('ph-book-open-text');
+const Bold = createIcon('ph-text-b');
+const Italic = createIcon('ph-text-italic');
+const Underline = createIcon('ph-text-underline');
+const List = createIcon('ph-list-bullets');
+const ListOrdered = createIcon('ph-list-numbers');
+const Heading1 = createIcon('ph-text-h-one');
+const Heading2 = createIcon('ph-text-h-two');
+const Heading3 = createIcon('ph-text-h-three');
+const CheckSquare = createIcon('ph-check-square');
+const RefreshCw = createIcon('ph-arrows-clockwise');
+const Feather = createIcon('ph-feather');
+const Settings = createIcon('ph-gear');
+const Type = createIcon('ph-text-t');
+const Edit3 = createIcon('ph-pencil-simple');
+const LinkIcon = createIcon('ph-link');
+const Info = createIcon('ph-info');
+const Quote = createIcon('ph-quotes');
+const Undo = createIcon('ph-arrow-u-up-left');
+const Redo = createIcon('ph-arrow-u-up-right');
+const Lock = createIcon('ph-lock-key');
+const Unlock = createIcon('ph-lock-key-open');
+const Calendar = createIcon('ph-calendar');
+const Palette = createIcon('ph-palette');
+const Grid = createIcon('ph-squares-four');
+const User = createIcon('ph-user');
+const LogOut = createIcon('ph-sign-out');
+const Mail = createIcon('ph-envelope-simple');
+const RotateCcw = createIcon('ph-clock-counter-clockwise');
+const AlertTriangle = createIcon('ph-warning');
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -197,7 +198,7 @@ function useOnClickOutside(ref, handler) {
 // --- FIREBASE SETUP ---
 let app, auth, db, appId;
 try {
-  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS (FACULTATIF POUR LE MODE LOCAL) ⚠️
+  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS ⚠️
   const firebaseConfig = {
     apiKey: "VOTRE_CLE_API_ICI",
     authDomain: "votre-projet.firebaseapp.com",
@@ -208,9 +209,9 @@ try {
   };
 
   if (firebaseConfig.apiKey !== "VOTRE_CLE_API_ICI") {
-    app = firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db = firebase.firestore();
+    app = window.firebase.initializeApp(firebaseConfig);
+    auth = window.firebase.auth();
+    db = window.firebase.firestore();
     appId = 'erza-spark-production';
   }
 } catch (error) {
@@ -291,7 +292,7 @@ const AuthScreen = ({ onGuestLogin }) => {
           </div>
 
           <button onClick={onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700">
-            <Save size={18} /> Continuer sans compte (Mode Local)
+            <Save size={18} /> Continuer sans compte (Local)
           </button>
           <p className="text-[10px] text-slate-500 text-center px-4">En mode local, vos notes sont sauvegardées uniquement dans la mémoire de ce téléphone.</p>
         </div>
@@ -425,7 +426,11 @@ const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
   };
 
   const startRecovery = () => {
-    alert(`(Simulation) Un code de sécurité a été envoyé à votre adresse email : ${userEmail}. \nPour cette démo, le code est : 0000`);
+    if(userEmail === 'Invité (Local)') {
+      alert("Mode local : Un code de secours (0000) a été généré pour vous permettre de déverrouiller la note.");
+    } else {
+      alert(`(Simulation) Un code de sécurité a été envoyé à votre adresse email : ${userEmail}. \nPour cette démo, le code est : 0000`);
+    }
     setRecoveryMode(true);
   };
 
@@ -1452,7 +1457,7 @@ function MainApp({ user, onLogout }) {
                </div>
             )}
             
-            {/* FOLDER CLASSIFICATION (NOW VISIBLE ON MOBILE) */}
+            {/* FOLDER CLASSIFICATION */}
             {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && (
                <div className="relative" ref={propertiesRef}>
                  <button onClick={() => setShowProperties(!showProperties)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${showProperties ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Classer dans un dossier"><Folder size={18} /></button>
@@ -1510,7 +1515,7 @@ function MainApp({ user, onLogout }) {
                     <div>
                       <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Typographie de l'éditeur</h3>
                       <div className="grid grid-cols-3 gap-3">
-                        {[{c:'font-sans', l:'Sans Serif (Moderne)'}, {c:'font-serif', l:'Serif (Classique)'}, {c:'font-mono', l:'Mono (Code)'}].map(f => (
+                        {[{c:'font-sans', l:'Sans Serif'}, {c:'font-serif', l:'Serif'}, {c:'font-mono', l:'Mono'}].map(f => (
                           <button key={f.c} onClick={() => { setAppSettings(p => ({...p, fontFamily: f.c})); setSyncStatus('saving'); }} className={`py-3 px-4 rounded-xl border transition-all ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>{f.l}</button>
                         ))}
                       </div>
@@ -1569,7 +1574,7 @@ function MainApp({ user, onLogout }) {
             <div className="flex w-full h-full">
               <RichTextEditor key={activeNote.id} note={activeNote} updateNote={updateActiveNote} appSettings={appSettings} navigateToLink={navigateToLink} searchQuery={searchQuery} />
               
-              {/* RIGHT SIDEBAR (OBSIDIAN BACKLINKS) - ADAPTED FOR MOBILE */}
+              {/* RIGHT SIDEBAR (OBSIDIAN BACKLINKS) */}
               {rightSidebarOpen && (
                 <div className="absolute lg:relative right-0 top-0 bottom-0 w-72 h-full bg-slate-900 border-l border-slate-800 flex flex-col z-30 shrink-0 shadow-2xl lg:shadow-none font-sans">
                   
@@ -1695,7 +1700,7 @@ const AppWrapper = () => {
   };
 
   if (loading) {
-    return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><Feather className="animate-pulse" size={48} /></div>;
+    return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><RefreshCw className="animate-spin" size={48} /></div>;
   }
 
   if (!user) {
@@ -1712,7 +1717,12 @@ class ErrorBoundary extends React.Component {
   resetApp = () => { this.setState({ hasError: false, error: null }); }
   
   render() {
-1:379462215469:web:2c12802420c76b644d15a4            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-screen w-full bg-slate-950 text-rose-400 items-center justify-center p-6 text-center font-sans">
+          <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 max-w-md shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
+            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
             <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">{this.state.error?.toString() || 'Erreur interne'}</p>
             <button onClick={this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
               <RefreshCw size={18}/> Recharger Erza Spark
