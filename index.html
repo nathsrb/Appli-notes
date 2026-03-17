@@ -200,15 +200,15 @@ let app, auth, db, appId;
 try {
   // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS ⚠️
   const firebaseConfig = {
-    apiKey: "VOTRE_CLE_API_ICI",
-    authDomain: "votre-projet.firebaseapp.com",
-    projectId: "votre-projet",
-    storageBucket: "votre-projet.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+    apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
+    authDomain: "ezra-spark.firebaseapp.com",
+    projectId: "ezra-spark",
+    storageBucket: "ezra-spark.firebasestorage.app",
+        messagingSenderId: "379462215469",
+        appId: "1:379462215469:web:2c12802420c76b644d15a4"
   };
 
-  if (firebaseConfig.apiKey !== "VOTRE_CLE_API_ICI") {
+  if (firebaseConfig.apiKey !== "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg") {
     app = window.firebase.initializeApp(firebaseConfig);
     auth = window.firebase.auth();
     db = window.firebase.firestore();
