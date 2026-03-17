@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ezra Park</title>
+    <title>Erza Spark</title>
     
     <!-- Tailwind CSS pour le design -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <meta name="theme-color" content="#020617">
 
-    <!-- Configuration des modules modernes (React, Lucide, Firebase) -->
+    <!-- Configuration des modules modernes (React, Lucide, Firebase Officiel Google) -->
     <script>window.process = { env: { NODE_ENV: 'production' } };</script>
     <script type="importmap">
       {
@@ -18,9 +18,9 @@
           "react": "https://esm.sh/react@18.2.0",
           "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
           "lucide-react": "https://esm.sh/lucide-react@0.292.0",
-          "firebase/app": "https://esm.sh/firebase@10.7.1/app",
-          "firebase/auth": "https://esm.sh/firebase@10.7.1/auth",
-          "firebase/firestore": "https://esm.sh/firebase@10.7.1/firestore"
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
         }
       }
     </script>
@@ -56,13 +56,13 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createRoot } from 'react-dom/client';
 import { 
   FileText, Search, Plus, Network, Trash2, Menu, X, Folder, Save, Cloud, CloudOff, 
-  SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, 
+  SidebarClose, SidebarOpen, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Target,
   CornerDownRight, AlignLeft, BookOpen, Bold, Italic, Underline, List, ListOrdered, 
   Heading1, Heading2, Heading3, CheckSquare, RefreshCw, Feather, Settings, Type, Edit3, 
-  Link as LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid
+  Link as LinkIcon, Info, Quote, Undo, Redo, Lock, Unlock, FolderOpen, Calendar, Palette, Grid, User, LogOut, Mail, Trash, RotateCcw, AlertTriangle
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 // --- UTILS & ALGORITHMS ---
@@ -131,7 +131,6 @@ const extractLinks = (content) => {
   return [...new Set(links)]; 
 };
 
-// --- HOOK: CLICK OUTSIDE ---
 function useOnClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (event) => {
@@ -150,39 +149,111 @@ function useOnClickOutside(ref, handler) {
 // --- FIREBASE SETUP ---
 let app, auth, db, appId;
 try {
-  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS SI VOUS LE SOUHAITEZ ⚠️
+  // ⚠️ ATTENTION : COLLER VOS CLÉS FIREBASE CI-DESSOUS (ETAPE 1 DU GUIDE) ⚠️
   const firebaseConfig = {
     apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
     authDomain: "ezra-spark.firebaseapp.com",
     projectId: "ezra-spark",
     storageBucket: "ezra-spark.firebasestorage.app",
     messagingSenderId: "379462215469",
-    appId: "1:379462215469:web:2c12802420c76b644d15a4"
+    appId: "1:379462215469:web:abcdef"
   };
 
-  if (firebaseConfig.apiKey !== "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg") {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    appId = 'ezra-park-production';
-  }
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  appId = 'erza-spark-production';
 } catch (error) {
   console.error("Erreur Firebase:", error);
 }
 
+// --- AUTHENTICATION SCREEN ---
+const AuthScreen = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    if (!auth) {
+      setError("Erreur : Firebase n'est pas configuré. Veuillez insérer vos clés dans le code.");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) {
+      setError(err.message.includes('auth/') ? "Email ou mot de passe invalide." : err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-full bg-slate-950 items-center justify-center p-4">
+      <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
+        <div className="text-center mb-8">
+          <Feather size={48} className="mx-auto mb-4 text-teal-500/40" strokeWidth={1.5} />
+          <h2 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">Erza Spark</h2>
+          <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté et sécurisé.</p>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={16} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="votre@email.com" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Mot de passe</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={16} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="••••••••" />
+            </div>
+          </div>
+          
+          {error && <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium text-center">{error}</div>}
+
+          <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-teal-500/20 mt-4 flex justify-center items-center gap-2 disabled:opacity-50">
+            {loading ? <RefreshCw className="animate-spin" size={18} /> : (isLogin ? "Se connecter" : "S'inscrire et commencer")}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-sm text-slate-400 hover:text-teal-400 transition-colors">
+            {isLogin ? "Nouveau ici ? Créer un compte" : "Déjà membre ? Se connecter"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // --- INITIAL MOCK DATA ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Ezra Park est prêt et fonctionnel sur Netlify.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Coffre-fort Garanti :</strong> Le mot de passe fonctionne. Une fois la note verrouillée, le texte est bloqué.</li><li><strong>Matrice d\'Eisenhower Classique :</strong> L\'agenda a retrouvé sa forme en colonnes. Les 4 pastilles de couleurs en bas des tâches représentent les 4 quadrants (Urgent/Important).</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark protège vos pensées les plus intimes.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Corbeille :</strong> Les notes supprimées vont maintenant dans la corbeille pour éviter les erreurs.</li><li><strong>Mot de passe oublié :</strong> Récupération possible par simulation d\'email !</li><li><strong>Design Cartes Mentales :</strong> Amélioré et boutons fixés en bas à droite pour toujours y avoir accès.</li></ul>';
 
 const initialNotes = [
   {
     id: generateId(),
-    title: 'Bienvenue dans Ezra Park',
+    title: 'Bienvenue dans Erza Spark',
     type: 'note',
     folder: 'Général',
     content: initialContent,
     plainText: stripHtml(initialContent),
     isLocked: false,
     lockPassword: '',
+    isDeleted: false,
     lastModified: Date.now()
   }
 ];
@@ -197,7 +268,7 @@ const MATRIX_COLORS = [
   { class: 'bg-slate-500/10 border-slate-500/30 text-slate-300', bg: 'bg-slate-500', action: 'Éliminer', sub: 'Ni Urg. Ni Imp.', icon: '⚪' }
 ];
 
-// --- AGENDA COMPONENT (EXPLICIT COLUMNS) ---
+// --- AGENDA COMPONENT ---
 const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   const safeEvents = Array.isArray(agendaEvents) ? agendaEvents : [];
 
@@ -226,7 +297,6 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
               
               return (
                 <div key={ev.id} className={`p-4 rounded-2xl border flex flex-col gap-2 group transition-all shadow-sm ${ev.color || MATRIX_COLORS[0].class}`}>
-                  {/* EXPLICIT TITLE FOR MATRIX */}
                   <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1 flex items-center gap-1.5">
                     {currentMatrix.icon} {currentMatrix.action} <span className="opacity-60 normal-case">({currentMatrix.sub})</span>
                   </div>
@@ -243,7 +313,6 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
                     className="bg-transparent outline-none resize-none text-[15px] font-sans min-h-[50px] custom-scrollbar text-slate-100 placeholder-slate-500 leading-relaxed mt-1"
                   />
                   
-                  {/* EXPLICIT BUTTONS MATRIX */}
                   <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-700/50">
                     {MATRIX_COLORS.map(m => {
                       const isSelected = (ev.color || MATRIX_COLORS[0].class) === m.class;
@@ -272,18 +341,53 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   );
 };
 
-// --- PASSWORD PROMPT COMPONENT ---
-const PasswordPrompt = ({ note, onUnlock }) => {
+// --- PASSWORD PROMPT COMPONENT WITH RECOVERY ---
+const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
   const [pwd, setPwd] = useState('');
   const [err, setErr] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
 
-  useEffect(() => { setPwd(''); setErr(false); }, [note.id]);
+  useEffect(() => { setPwd(''); setErr(false); setRecoveryMode(false); setRecoveryCodeInput(''); }, [note.id]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (pwd === note.lockPassword) onUnlock(note.id);
+    if (pwd === note.lockPassword) onUnlock(note.id, false);
     else { setErr(true); setPwd(''); }
   };
+
+  const handleRecoverySubmit = (e) => {
+    e.preventDefault();
+    if (recoveryCodeInput === '0000') {
+       onUnlock(note.id, true); // true = reset password entirely
+    } else {
+       alert('Code invalide.');
+    }
+  };
+
+  const startRecovery = () => {
+    alert(`(Simulation) Un code de sécurité a été envoyé à votre adresse email : ${userEmail}. \nPour cette démo, le code est : 0000`);
+    setRecoveryMode(true);
+  };
+
+  if (recoveryMode) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-slate-500 px-4 font-sans bg-slate-950">
+        <form onSubmit={handleRecoverySubmit} className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-col items-center text-center max-w-sm w-full relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
+          <Mail size={40} className="mb-4 text-amber-500/80" />
+          <h2 className="text-2xl font-serif font-bold text-white mb-2">Récupération</h2>
+          <p className="text-sm text-slate-400 mb-6 font-medium">Entrez le code reçu à <b>{userEmail}</b></p>
+          
+          <input type="text" value={recoveryCodeInput} onChange={(e) => setRecoveryCodeInput(e.target.value)} required
+            className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3.5 outline-none focus:border-amber-500 text-center tracking-[0.5em] font-mono mb-4 text-xl shadow-inner" placeholder="----" autoFocus />
+          
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20">Valider le code</button>
+          <button type="button" onClick={() => setRecoveryMode(false)} className="mt-4 text-xs text-slate-500 hover:text-slate-300">Annuler</button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-slate-500 px-4 font-sans bg-slate-950">
@@ -306,6 +410,10 @@ const PasswordPrompt = ({ note, onUnlock }) => {
         
         <button type="submit" className="w-full mt-2 bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20">
           <Unlock size={18} /> Déverrouiller
+        </button>
+
+        <button type="button" onClick={startRecovery} className="mt-6 text-xs text-slate-500 hover:text-teal-400 transition-colors underline underline-offset-2">
+          Mot de passe oublié ?
         </button>
       </form>
     </div>
@@ -467,12 +575,258 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
   return (
     <div className="w-full h-full bg-slate-950 overflow-hidden relative">
       <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
-        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral 2.0</div>
+        <div className="flex items-center gap-2 mb-1 text-white font-bold"><Network size={16} /> Graphe Cérébral</div>
         <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites (Texte)</div>
-        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-blue-500 border border-dashed border-slate-900"></div> Même Dossier</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites</div>
       </div>
       <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+    </div>
+  );
+};
+
+
+// --- MIND MAP ENGINE (IMPROVED DESIGN) ---
+const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
+  const containerRef = useRef(null);
+  const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
+  const [selection, setSelection] = useState('root');
+  const [editingNodeId, setEditingNodeId] = useState(null);
+  
+  const dragState = useRef({ type: null }); 
+  const pinchState = useRef({ initialDist: 0, initialZoom: 1 });
+
+  const [nodes, setNodes] = useState(() => {
+    try {
+      const parsed = JSON.parse(note?.content || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (!parsed.find(n => n.id === 'root')) parsed[0].id = 'root';
+        return parsed;
+      }
+    } catch (e) {}
+    return [{ id: 'root', parentId: null, text: 'Idée Centrale' }];
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const plainText = nodes.map(n => n.text).join(' ');
+      updateNote({ content: JSON.stringify(nodes), plainText });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [nodes, updateNote]);
+
+  const layout = useMemo(() => {
+    try {
+      const W = 220; const H = 60; const gapX = 90; const gapY = 30; // Bigger and more spaced out nodes
+      const childrenMap = {};
+      nodes.forEach(n => childrenMap[n.id] = []);
+      nodes.forEach(n => { if (n.parentId && childrenMap[n.parentId]) childrenMap[n.parentId].push(n.id); });
+
+      const root = nodes.find(n => n.id === 'root') || nodes[0];
+      if (!root) return { positions: {} };
+
+      const nodeSizes = {};
+      const calcSubtreeHeight = (nodeId) => {
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) { nodeSizes[nodeId] = H; return H; }
+        let totalHeight = 0;
+        for (let childId of children) totalHeight += calcSubtreeHeight(childId);
+        totalHeight += (children.length - 1) * gapY;
+        nodeSizes[nodeId] = Math.max(H, totalHeight);
+        return nodeSizes[nodeId];
+      };
+      calcSubtreeHeight(root.id);
+
+      const positions = {};
+      const assignCoordinates = (nodeId, x, centerY, depth) => {
+        const isRoot = depth === 0;
+        const nodeWidth = isRoot ? 260 : W;
+        positions[nodeId] = { x, y: centerY - (H / 2), width: nodeWidth, height: H, depth };
+
+        const children = childrenMap[nodeId] || [];
+        if (children.length === 0) return;
+        let startY = centerY - (nodeSizes[nodeId] / 2);
+        for (let childId of children) {
+          let childSubtreeHeight = nodeSizes[childId];
+          let childCenterY = startY + (childSubtreeHeight / 2);
+          assignCoordinates(childId, x + nodeWidth + gapX, childCenterY, depth + 1);
+          startY += childSubtreeHeight + gapY;
+        }
+      };
+      assignCoordinates(root.id, 0, 0, 0);
+      return { positions, childrenMap };
+    } catch (error) { return { positions: {} }; }
+  }, [nodes]);
+
+  const addNode = (parentId) => {
+    if (!parentId) return;
+    const newNode = { id: generateId(), parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const addSibling = (currentNodeId) => {
+    const currentNode = nodes.find(n => n.id === currentNodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const newNode = { id: generateId(), parentId: currentNode.parentId, text: '' };
+    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
+  };
+
+  const deleteNode = (nodeId) => {
+    const currentNode = nodes.find(n => n.id === nodeId);
+    if (!currentNode || !currentNode.parentId) return;
+    const toDelete = new Set([nodeId]);
+    const findChildren = (id) => { nodes.filter(n => n.parentId === id).forEach(c => { toDelete.add(c.id); findChildren(c.id); }); };
+    findChildren(nodeId);
+    setNodes(prev => prev.filter(n => !toDelete.has(n.id)));
+    setSelection(currentNode.parentId); 
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey || e.deltaY % 1 !== 0) { 
+      const newZoom = Math.min(Math.max(0.2, camera.zoom + (-e.deltaY * 0.005)), 3);
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+      setCamera({ x: mouseX - (mouseX - camera.x) * (newZoom / camera.zoom), y: mouseY - (mouseY - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+    } else { 
+      setCamera(c => ({ ...c, x: c.x - e.deltaX, y: c.y - e.deltaY }));
+    }
+  };
+
+  const getTouchDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+  const getTouchCenter = (touches, rect) => ({ x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left, y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top });
+
+  const onTouchStart = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1) {
+      dragState.current = { type: 'pan', startX: e.touches[0].clientX, startY: e.touches[0].clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    } else if (e.touches.length === 2) {
+      dragState.current = { type: 'pinch' };
+      pinchState.current = { initialDist: getTouchDistance(e.touches), initialZoom: camera.zoom };
+    }
+  };
+
+  const onTouchMove = (e) => {
+    if (editingNodeId) return;
+    if (e.touches.length === 1 && dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.touches[0].clientX - dragState.current.startX), y: dragState.current.initCamY + (e.touches[0].clientY - dragState.current.startY) });
+    } else if (e.touches.length === 2 && dragState.current.type === 'pinch') {
+      const scale = getTouchDistance(e.touches) / pinchState.current.initialDist;
+      const newZoom = Math.min(Math.max(0.2, pinchState.current.initialZoom * scale), 3);
+      if (containerRef.current) {
+        const center = getTouchCenter(e.touches, containerRef.current.getBoundingClientRect());
+        setCamera({ x: center.x - (center.x - camera.x) * (newZoom / camera.zoom), y: center.y - (center.y - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
+      }
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.pointerType === 'touch' || editingNodeId) return; 
+    if (e.target === containerRef.current || e.target.tagName === 'svg') {
+      dragState.current = { type: 'pan', startX: e.clientX, startY: e.clientY, initCamX: camera.x, initCamY: camera.y };
+      setSelection(null);
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (e.pointerType === 'touch') return;
+    if (dragState.current.type === 'pan') {
+      setCamera({ ...camera, x: dragState.current.initCamX + (e.clientX - dragState.current.startX), y: dragState.current.initCamY + (e.clientY - dragState.current.startY) });
+    }
+  };
+
+  const drawEdges = () => {
+    const paths = [];
+    nodes.forEach(node => {
+      if (!node.parentId) return;
+      const pPos = layout.positions[node.parentId]; const cPos = layout.positions[node.id];
+      if (!pPos || !cPos) return;
+      const startX = pPos.x + pPos.width; const startY = pPos.y + (pPos.height / 2);
+      const endX = cPos.x; const endY = cPos.y + (cPos.height / 2);
+      const midX = startX + (endX - startX) / 2;
+      // Brighter connection lines for better design
+      paths.push(<path key={`e_${node.id}`} d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`} fill="none" stroke={pPos.depth === 0 ? "#14b8a6" : "#475569"} strokeWidth={pPos.depth === 0 ? "3" : "2"} strokeOpacity="0.8" />);
+    });
+    return paths;
+  };
+
+  const renderNodeText = (text) => {
+    if (!text) return <span className="opacity-40 italic font-normal">Idée...</span>;
+    let displayedText = text;
+    if (searchQuery) {
+      displayedText = highlightTitle(text, searchQuery);
+    }
+    const parts = displayedText.split(/(\[\[.*?\]\])/g);
+    return parts.map((part, i) => {
+      const match = part.match(/\[\[(.*?)\]\]/);
+      if (match) {
+        const linkDest = match[1].replace(/<mark[^>]*>|<\/mark>/g, '');
+        return (<span key={i} className="text-teal-300 font-bold underline cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); navigateToLink(linkDest); }} dangerouslySetInnerHTML={{__html: part}} />);
+      }
+      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+    });
+  };
+
+  return (
+    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
+      
+      {/* FLOATING CONTROLS - FIXED AT BOTTOM RIGHT FOR EASY THUMB ACCESS */}
+      <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomIn size={24}/></button>
+        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><ZoomOut size={24}/></button>
+        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><Target size={24}/></button>
+      </div>
+
+      {selection && !editingNodeId && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-3 bg-slate-900/95 p-3 rounded-3xl border border-slate-700 shadow-2xl backdrop-blur-lg w-max">
+          <button onPointerDown={(e) => { e.stopPropagation(); setEditingNodeId(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-white bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><Edit3 size={18}/><span className="text-[10px] font-bold tracking-wide">ÉDITER</span></button>
+          <button onPointerDown={(e) => { e.stopPropagation(); addNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[75px] h-[60px] sm:w-24 sm:h-16 text-white bg-teal-600 hover:bg-teal-500 rounded-2xl transition-all shadow-md shadow-teal-500/20"><CornerDownRight size={18}/><span className="text-[10px] font-bold tracking-wide">ENFANT</span></button>
+          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); addSibling(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[80px] h-[60px] sm:w-24 sm:h-16 text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><AlignLeft size={18}/><span className="text-[10px] font-bold tracking-wide">FRÈRE</span></button>}
+          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); deleteNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-rose-200 bg-rose-500/20 hover:bg-rose-500/40 rounded-2xl transition-all shadow-md"><Trash2 size={18}/><span className="text-[10px] font-bold tracking-wide">SUPPR</span></button>}
+        </div>
+      )}
+      
+      <div className="absolute inset-0 origin-top-left" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
+        <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-0">{drawEdges()}</svg>
+        {nodes.map(node => {
+          const pos = layout.positions[node.id];
+          if (!pos) return null;
+          const isSelected = selection === node.id; const isEditing = editingNodeId === node.id; const isRoot = pos.depth === 0;
+          
+          let nodeClass = "absolute flex items-center p-4 sm:p-5 transition-all cursor-pointer border-2 z-10 overflow-hidden ";
+          
+          // Improved Mind Map Design
+          if (isRoot) {
+            nodeClass += "bg-gradient-to-br from-teal-600 to-emerald-700 border-teal-400 rounded-full justify-center text-center shadow-[0_0_30px_rgba(20,184,166,0.3)] ";
+            nodeClass += isSelected ? "ring-4 ring-teal-300/40 scale-105" : "hover:scale-105";
+          } else {
+            nodeClass += "bg-slate-800/95 border-slate-600 rounded-2xl justify-start shadow-xl backdrop-blur-sm ";
+            nodeClass += isSelected ? "border-teal-400 ring-2 ring-teal-400/20 scale-105" : "hover:border-slate-400 hover:bg-slate-700";
+          }
+
+          return (
+            <div key={node.id} onPointerDown={(e) => { e.stopPropagation(); setSelection(node.id); if(editingNodeId !== node.id) setEditingNodeId(null); }} onDoubleClick={(e) => { e.stopPropagation(); setEditingNodeId(node.id); setSelection(node.id); }} className={nodeClass} style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, width: pos.width, minHeight: pos.height }}>
+              {isEditing ? (
+                <textarea 
+                  autoFocus 
+                  className={`w-full h-full bg-transparent text-white outline-none resize-none custom-scrollbar p-1 ${isRoot ? 'text-xl text-center font-serif font-bold' : 'text-base font-sans font-medium'}`} 
+                  value={node.text || ''} 
+                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, text: e.target.value } : n))} 
+                  onPointerDown={(e) => e.stopPropagation()} 
+                  onBlur={() => setEditingNodeId(null)} 
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingNodeId(null); } }} 
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                />
+              ) : (
+                <div className={`text-white w-full flex items-center leading-snug ${isRoot ? 'text-lg sm:text-xl justify-center font-serif font-bold tracking-wide' : 'text-[15px] font-sans font-medium'}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {renderNodeText(node.text)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -660,252 +1014,8 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
 };
 
 
-// --- MIND MAP ENGINE ---
-const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
-  const containerRef = useRef(null);
-  const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
-  const [selection, setSelection] = useState('root');
-  const [editingNodeId, setEditingNodeId] = useState(null);
-  
-  const dragState = useRef({ type: null }); 
-  const pinchState = useRef({ initialDist: 0, initialZoom: 1 });
-
-  const [nodes, setNodes] = useState(() => {
-    try {
-      const parsed = JSON.parse(note?.content || '[]');
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (!parsed.find(n => n.id === 'root')) parsed[0].id = 'root';
-        return parsed;
-      }
-    } catch (e) {}
-    return [{ id: 'root', parentId: null, text: 'Idée Centrale' }];
-  });
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const plainText = nodes.map(n => n.text).join(' ');
-      updateNote({ content: JSON.stringify(nodes), plainText });
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [nodes, updateNote]);
-
-  const layout = useMemo(() => {
-    try {
-      const W = 170; const H = 50; const gapX = 70; const gapY = 25;
-      const childrenMap = {};
-      nodes.forEach(n => childrenMap[n.id] = []);
-      nodes.forEach(n => { if (n.parentId && childrenMap[n.parentId]) childrenMap[n.parentId].push(n.id); });
-
-      const root = nodes.find(n => n.id === 'root') || nodes[0];
-      if (!root) return { positions: {} };
-
-      const nodeSizes = {};
-      const calcSubtreeHeight = (nodeId) => {
-        const children = childrenMap[nodeId] || [];
-        if (children.length === 0) { nodeSizes[nodeId] = H; return H; }
-        let totalHeight = 0;
-        for (let childId of children) totalHeight += calcSubtreeHeight(childId);
-        totalHeight += (children.length - 1) * gapY;
-        nodeSizes[nodeId] = Math.max(H, totalHeight);
-        return nodeSizes[nodeId];
-      };
-      calcSubtreeHeight(root.id);
-
-      const positions = {};
-      const assignCoordinates = (nodeId, x, centerY, depth) => {
-        const isRoot = depth === 0;
-        const nodeWidth = isRoot ? 220 : W;
-        positions[nodeId] = { x, y: centerY - (H / 2), width: nodeWidth, height: H, depth };
-
-        const children = childrenMap[nodeId] || [];
-        if (children.length === 0) return;
-        let startY = centerY - (nodeSizes[nodeId] / 2);
-        for (let childId of children) {
-          let childSubtreeHeight = nodeSizes[childId];
-          let childCenterY = startY + (childSubtreeHeight / 2);
-          assignCoordinates(childId, x + nodeWidth + gapX, childCenterY, depth + 1);
-          startY += childSubtreeHeight + gapY;
-        }
-      };
-      assignCoordinates(root.id, 0, 0, 0);
-      return { positions, childrenMap };
-    } catch (error) { return { positions: {} }; }
-  }, [nodes]);
-
-  const addNode = (parentId) => {
-    if (!parentId) return;
-    const newNode = { id: generateId(), parentId, text: '' };
-    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
-  };
-
-  const addSibling = (currentNodeId) => {
-    const currentNode = nodes.find(n => n.id === currentNodeId);
-    if (!currentNode || !currentNode.parentId) return;
-    const newNode = { id: generateId(), parentId: currentNode.parentId, text: '' };
-    setNodes(prev => [...prev, newNode]); setSelection(newNode.id); setEditingNodeId(newNode.id);
-  };
-
-  const deleteNode = (nodeId) => {
-    const currentNode = nodes.find(n => n.id === nodeId);
-    if (!currentNode || !currentNode.parentId) return;
-    const toDelete = new Set([nodeId]);
-    const findChildren = (id) => { nodes.filter(n => n.parentId === id).forEach(c => { toDelete.add(c.id); findChildren(c.id); }); };
-    findChildren(nodeId);
-    setNodes(prev => prev.filter(n => !toDelete.has(n.id)));
-    setSelection(currentNode.parentId); 
-  };
-
-  const handleWheel = (e) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey || e.deltaY % 1 !== 0) { 
-      const newZoom = Math.min(Math.max(0.2, camera.zoom + (-e.deltaY * 0.005)), 3);
-      const rect = containerRef.current.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
-      setCamera({ x: mouseX - (mouseX - camera.x) * (newZoom / camera.zoom), y: mouseY - (mouseY - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
-    } else { 
-      setCamera(c => ({ ...c, x: c.x - e.deltaX, y: c.y - e.deltaY }));
-    }
-  };
-
-  const getTouchDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
-  const getTouchCenter = (touches, rect) => ({ x: ((touches[0].clientX + touches[1].clientX) / 2) - rect.left, y: ((touches[0].clientY + touches[1].clientY) / 2) - rect.top });
-
-  const onTouchStart = (e) => {
-    if (editingNodeId) return;
-    if (e.touches.length === 1) {
-      dragState.current = { type: 'pan', startX: e.touches[0].clientX, startY: e.touches[0].clientY, initCamX: camera.x, initCamY: camera.y };
-      setSelection(null);
-    } else if (e.touches.length === 2) {
-      dragState.current = { type: 'pinch' };
-      pinchState.current = { initialDist: getTouchDistance(e.touches), initialZoom: camera.zoom };
-    }
-  };
-
-  const onTouchMove = (e) => {
-    if (editingNodeId) return;
-    if (e.touches.length === 1 && dragState.current.type === 'pan') {
-      setCamera({ ...camera, x: dragState.current.initCamX + (e.touches[0].clientX - dragState.current.startX), y: dragState.current.initCamY + (e.touches[0].clientY - dragState.current.startY) });
-    } else if (e.touches.length === 2 && dragState.current.type === 'pinch') {
-      const scale = getTouchDistance(e.touches) / pinchState.current.initialDist;
-      const newZoom = Math.min(Math.max(0.2, pinchState.current.initialZoom * scale), 3);
-      if (containerRef.current) {
-        const center = getTouchCenter(e.touches, containerRef.current.getBoundingClientRect());
-        setCamera({ x: center.x - (center.x - camera.x) * (newZoom / camera.zoom), y: center.y - (center.y - camera.y) * (newZoom / camera.zoom), zoom: newZoom });
-      }
-    }
-  };
-
-  const handlePointerDown = (e) => {
-    if (e.pointerType === 'touch' || editingNodeId) return; 
-    if (e.target === containerRef.current || e.target.tagName === 'svg') {
-      dragState.current = { type: 'pan', startX: e.clientX, startY: e.clientY, initCamX: camera.x, initCamY: camera.y };
-      setSelection(null);
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (e.pointerType === 'touch') return;
-    if (dragState.current.type === 'pan') {
-      setCamera({ ...camera, x: dragState.current.initCamX + (e.clientX - dragState.current.startX), y: dragState.current.initCamY + (e.clientY - dragState.current.startY) });
-    }
-  };
-
-  const drawEdges = () => {
-    const paths = [];
-    nodes.forEach(node => {
-      if (!node.parentId) return;
-      const pPos = layout.positions[node.parentId]; const cPos = layout.positions[node.id];
-      if (!pPos || !cPos) return;
-      const startX = pPos.x + pPos.width; const startY = pPos.y + (pPos.height / 2);
-      const endX = cPos.x; const endY = cPos.y + (cPos.height / 2);
-      const midX = startX + (endX - startX) / 2;
-      paths.push(<path key={`e_${node.id}`} d={`M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`} fill="none" stroke={pPos.depth === 0 ? "#14b8a6" : "#334155"} strokeWidth={pPos.depth === 0 ? "3" : "2"} strokeOpacity="0.7" />);
-    });
-    return paths;
-  };
-
-  const renderNodeText = (text) => {
-    if (!text) return <span className="opacity-40 italic font-normal">Idée...</span>;
-    let displayedText = text;
-    if (searchQuery) {
-      displayedText = highlightTitle(text, searchQuery);
-    }
-    const parts = displayedText.split(/(\[\[.*?\]\])/g);
-    return parts.map((part, i) => {
-      const match = part.match(/\[\[(.*?)\]\]/);
-      if (match) {
-        const linkDest = match[1].replace(/<mark[^>]*>|<\/mark>/g, '');
-        return (<span key={i} className="text-teal-300 font-bold underline cursor-pointer hover:text-white" onClick={(e) => { e.stopPropagation(); navigateToLink(linkDest); }} dangerouslySetInnerHTML={{__html: part}} />);
-      }
-      return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
-    });
-  };
-
-  return (
-    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref={containerRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => {dragState.current.type=null}} onPointerLeave={() => {dragState.current.type=null}} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={() => {dragState.current.type=null}} onTouchCancel={() => {dragState.current.type=null}}>
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }} />
-      
-      <div className="hidden md:flex absolute top-5 left-5 z-20 gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomIn size={18}/></button>
-        <button onClick={() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all"><ZoomOut size={18}/></button>
-        <button onClick={() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="p-2 rounded-xl text-slate-400 hover:text-teal-400 hover:bg-slate-800 transition-all" title="Centrer"><Maximize size={18}/></button>
-      </div>
-
-      {selection && !editingNodeId && (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 flex gap-3 bg-slate-900/95 p-3 rounded-3xl border border-slate-700 shadow-2xl backdrop-blur-lg w-max">
-          <button onPointerDown={(e) => { e.stopPropagation(); setEditingNodeId(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-white bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><Edit3 size={18}/><span className="text-[10px] font-bold tracking-wide">ÉDITER</span></button>
-          <button onPointerDown={(e) => { e.stopPropagation(); addNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[75px] h-[60px] sm:w-24 sm:h-16 text-white bg-teal-600 hover:bg-teal-500 rounded-2xl transition-all shadow-md shadow-teal-500/20"><CornerDownRight size={18}/><span className="text-[10px] font-bold tracking-wide">ENFANT</span></button>
-          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); addSibling(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[80px] h-[60px] sm:w-24 sm:h-16 text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all shadow-md hover:text-teal-300"><AlignLeft size={18}/><span className="text-[10px] font-bold tracking-wide">FRÈRE</span></button>}
-          {selection !== 'root' && <button onPointerDown={(e) => { e.stopPropagation(); deleteNode(selection); }} className="flex flex-col items-center justify-center gap-1.5 w-[65px] h-[60px] sm:w-20 sm:h-16 text-rose-200 bg-rose-500/20 hover:bg-rose-500/40 rounded-2xl transition-all shadow-md"><Trash2 size={18}/><span className="text-[10px] font-bold tracking-wide">SUPPR</span></button>}
-        </div>
-      )}
-      
-      <div className="absolute inset-0 origin-top-left" style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
-        <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-0">{drawEdges()}</svg>
-        {nodes.map(node => {
-          const pos = layout.positions[node.id];
-          if (!pos) return null;
-          const isSelected = selection === node.id; const isEditing = editingNodeId === node.id; const isRoot = pos.depth === 0;
-          
-          let nodeClass = "absolute flex items-center p-3 sm:p-4 transition-all cursor-pointer border-2 z-10 overflow-hidden ";
-          if (isRoot) {
-            nodeClass += "bg-slate-900 border-teal-500 rounded-[2rem] justify-center text-center shadow-2xl shadow-teal-500/10 ";
-            nodeClass += isSelected ? "ring-4 ring-teal-500/30 scale-105" : "hover:border-teal-400";
-          } else {
-            nodeClass += "bg-slate-900/90 border-slate-700 rounded-2xl justify-start shadow-xl backdrop-blur-sm ";
-            nodeClass += isSelected ? "border-teal-500 ring-2 ring-teal-500/20 bg-slate-800 scale-105" : "hover:border-slate-500";
-          }
-
-          return (
-            <div key={node.id} onPointerDown={(e) => { e.stopPropagation(); setSelection(node.id); if(editingNodeId !== node.id) setEditingNodeId(null); }} onDoubleClick={(e) => { e.stopPropagation(); setEditingNodeId(node.id); setSelection(node.id); }} className={nodeClass} style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, width: pos.width, minHeight: pos.height }}>
-              {isEditing ? (
-                <textarea 
-                  autoFocus 
-                  className={`w-full h-full bg-transparent text-slate-100 outline-none resize-none custom-scrollbar p-1 ${isRoot ? 'text-lg text-center font-serif font-bold' : 'text-[15px] font-sans font-medium'}`} 
-                  value={node.text || ''} 
-                  onChange={(e) => setNodes(nodes.map(n => n.id === node.id ? { ...n, text: e.target.value } : n))} 
-                  onPointerDown={(e) => e.stopPropagation()} 
-                  onBlur={() => setEditingNodeId(null)} 
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingNodeId(null); } }} 
-                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                />
-              ) : (
-                <div className={`text-slate-100 w-full flex items-center leading-snug ${isRoot ? 'text-base sm:text-lg justify-center font-serif font-bold tracking-wide' : 'text-sm sm:text-[15px] font-sans font-medium'}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {renderNodeText(node.text)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-
-// --- MAIN APPLICATION COMPONENT ---
-function MainApp() {
-  const [user, setUser] = useState(null);
+// --- MAIN APP (POST-LOGIN) ---
+function MainApp({ user }) {
   const [notes, setNotes] = useState([]);
   
   // Matrix/Agenda State
@@ -922,22 +1032,16 @@ function MainApp() {
   const [isInitializing, setIsInitializing] = useState(true);
   
   const [appSettings, setAppSettings] = useState({ fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed' });
-  const [showSettings, setShowSettings] = useState(false);
-  const [showProperties, setShowProperties] = useState(false);
   
-  // Folder Toggle State
   const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
 
-  // Refs for click outside
-  const settingsRef = useRef(null);
   const propertiesRef = useRef(null);
   const lockConfigRef = useRef(null);
 
-  useOnClickOutside(settingsRef, () => setShowSettings(false));
   useOnClickOutside(propertiesRef, () => setShowProperties(false));
   useOnClickOutside(lockConfigRef, () => setShowLockConfig(false));
 
-  // SECURE LOCK STATE
+  const [showProperties, setShowProperties] = useState(false);
   const [unlockedNotes, setUnlockedNotes] = useState(new Set());
   const [showLockConfig, setShowLockConfig] = useState(false);
   const [lockPasswordInput, setLockPasswordInput] = useState('');
@@ -946,62 +1050,51 @@ function MainApp() {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // INIT Auth & DATA SYNC
+  // DATA SYNC
   useEffect(() => {
-    if (!auth) { setNotes(initialNotes); setActiveNoteId(initialNotes[0].id); setIsInitializing(false); return; }
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-        else await signInAnonymously(auth);
-      } catch (err) {}
-    };
-    initAuth();
+    if(!user || !db) return;
     
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-      setUser(authUser);
-      if(authUser && db) {
-        onSnapshot(query(collection(db, 'artifacts', appId, 'users', authUser.uid, 'notes')), 
-          (snapshot) => {
-            const notesData = snapshot.docs.map(doc => {
-              const data = doc.data();
-              if (!data.plainText && data.plainText !== '') {
-                if (data.type === 'mindmap') {
-                   try { data.plainText = JSON.parse(data.content).map(n => n.text).join(' '); } catch(e) { data.plainText = ''; }
-                } else {
-                   data.plainText = stripHtml(data.content || '');
-                }
-              }
-              return { id: doc.id, ...data };
-            });
-
-            if (notesData.length === 0 && isInitializing) {
-              initialNotes.forEach(async (note) => await setDoc(doc(db, 'artifacts', appId, 'users', authUser.uid, 'notes', note.id), note));
+    const unsubscribeNotes = onSnapshot(query(collection(db, 'artifacts', appId, 'users', user.uid, 'notes')), 
+      (snapshot) => {
+        const notesData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          if (!data.plainText && data.plainText !== '') {
+            if (data.type === 'mindmap') {
+               try { data.plainText = JSON.parse(data.content).map(n => n.text).join(' '); } catch(e) { data.plainText = ''; }
             } else {
-              notesData.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
-              setNotes(notesData);
-              if (isInitializing && notesData.length > 0) setActiveNoteId(notesData[0].id);
-            }
-            setIsInitializing(false);
-          }, () => setSyncStatus('error')
-        );
-
-        onSnapshot(doc(db, 'artifacts', appId, 'users', authUser.uid, 'settings', 'data'), 
-          (docSnap) => { 
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
-              if (data.appSettings) setAppSettings(prev => ({...prev, ...data.appSettings}));
+               data.plainText = stripHtml(data.content || '');
             }
           }
-        );
+          return { id: doc.id, ...data };
+        });
+
+        if (notesData.length === 0 && isInitializing) {
+          initialNotes.forEach(async (note) => await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', note.id), note));
+        } else {
+          notesData.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+          setNotes(notesData);
+          if (isInitializing && notesData.length > 0) setActiveNoteId(notesData[0].id);
+        }
+        setIsInitializing(false);
+      }, () => setSyncStatus('error')
+    );
+
+    const unsubscribeSettings = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'data'), 
+      (docSnap) => { 
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
+          if (data.appSettings) setAppSettings(prev => ({...prev, ...data.appSettings}));
+        }
       }
-    });
-    return () => unsubscribe();
-  }, []);
+    );
+
+    return () => { unsubscribeNotes(); unsubscribeSettings(); }
+  }, [user]);
 
   // SAVES
   useEffect(() => {
-    if (!user || !db || syncStatus !== 'saving' || ['agenda', 'graph'].includes(viewMode)) return;
+    if (!user || !db || syncStatus !== 'saving' || ['agenda', 'graph', 'trash', 'settings'].includes(viewMode)) return;
     const activeNote = notes.find(n => n.id === activeNoteId);
     if (!activeNote) return;
     const timeoutId = setTimeout(async () => {
@@ -1019,11 +1112,8 @@ function MainApp() {
   }, [agendaEvents, appSettings, user, syncStatus]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
-  
-  // A note is locked if it has 'isLocked' flag AND its ID is not in our session unlocked set
   const isNoteLocked = activeNote && activeNote.isLocked && !unlockedNotes.has(activeNote.id);
 
-  // --- ACTIONS ---
   const createDocument = (type = 'note', customTitle = null, customContent = null, customFolder = 'Général') => {
     const newDoc = {
       id: generateId(),
@@ -1034,6 +1124,7 @@ function MainApp() {
       plainText: type === 'note' ? 'Nouvelle Note' : '',
       isLocked: false,
       lockPassword: '',
+      isDeleted: false,
       lastModified: Date.now()
     };
     setNotes([newDoc, ...notes]);
@@ -1047,7 +1138,7 @@ function MainApp() {
   const openDailyNote = () => {
     const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const formattedTitle = `Journal - ${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}`;
-    const existing = notes.find(n => n.title === formattedTitle);
+    const existing = notes.find(n => n.title === formattedTitle && !n.isDeleted);
     
     if (existing) {
       setActiveNoteId(existing.id);
@@ -1075,16 +1166,28 @@ function MainApp() {
     setSyncStatus('saving');
   }, [activeNoteId]);
 
-  const deleteNote = async (id) => {
+  const deleteNote = (id) => {
+    // Soft Delete
+    setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
+    setSyncStatus('saving');
+    if (activeNoteId === id) setActiveNoteId(null);
+  };
+  
+  const restoreNote = (id) => {
+    setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: false, lastModified: Date.now() } : note));
+    setSyncStatus('saving');
+  };
+
+  const permanentDeleteNote = async (id) => {
     const updatedNotes = notes.filter(n => n.id !== id);
     setNotes(updatedNotes);
-    if (activeNoteId === id) setActiveNoteId(updatedNotes.length > 0 ? updatedNotes[0].id : null);
+    if (activeNoteId === id) setActiveNoteId(null);
     if (user && db) { try { await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'notes', id)); } catch (e) {} }
   };
 
   const navigateToLink = (titleQuery) => {
     const queryStr = (titleQuery || '').toLowerCase();
-    const existingNote = notes.find(n => (n.title || '').toLowerCase() === queryStr);
+    const existingNote = notes.find(n => (n.title || '').toLowerCase() === queryStr && !n.isDeleted);
     if (existingNote) {
       if (existingNote.isLocked && !unlockedNotes.has(existingNote.id)) { alert("Note verrouillée."); return; }
       setActiveNoteId(existingNote.id);
@@ -1116,11 +1219,11 @@ function MainApp() {
     }
   };
 
-  // FILTER & O(1) DEEP SEARCH (SECURED)
   const filteredNotes = useMemo(() => {
-    if (!searchQuery) return notes.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+    let activeList = notes.filter(n => !n.isDeleted);
+    if (!searchQuery) return activeList.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
     const q = searchQuery.toLowerCase();
-    return notes.filter(n => {
+    return activeList.filter(n => {
       const isSecured = n.isLocked && !unlockedNotes.has(n.id);
       if (isSecured) return (n.title || '').toLowerCase().includes(q);
       return (n.title || '').toLowerCase().includes(q) || (n.plainText || '').toLowerCase().includes(q);
@@ -1129,8 +1232,8 @@ function MainApp() {
 
   const textNotes = useMemo(() => filteredNotes.filter(n => !n.type || n.type === 'note'), [filteredNotes]);
   const mindmapsList = useMemo(() => filteredNotes.filter(n => n.type === 'mindmap'), [filteredNotes]);
+  const trashNotes = useMemo(() => notes.filter(n => n.isDeleted).sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0)), [notes]);
 
-  // DYNAMIC FOLDER EXTRACTION
   const folders = useMemo(() => {
     const grouped = {};
     textNotes.forEach(note => {
@@ -1143,7 +1246,6 @@ function MainApp() {
   
   const allFolderNames = useMemo(() => Object.keys(folders).sort(), [folders]);
 
-  // BACKLINKS CALCULATION (EXPLICIT + IMPLICIT)
   const { explicitBacklinks, implicitBacklinks } = useMemo(() => {
     const explicit = [];
     const implicit = [];
@@ -1152,7 +1254,7 @@ function MainApp() {
     const activeTitleLower = (activeNote.title || '').toLowerCase();
     if (!activeTitleLower) return { explicitBacklinks: explicit, implicitBacklinks: implicit };
 
-    notes.forEach(n => {
+    notes.filter(n => !n.isDeleted).forEach(n => {
       if (n.id === activeNote.id) return;
       if (n.isLocked && !unlockedNotes.has(n.id)) return; 
 
@@ -1188,44 +1290,20 @@ function MainApp() {
         <div className="p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
           <div className="flex items-center gap-3 font-bold text-white">
             <div className="text-teal-400"><Feather size={24} /></div>
-            <span className="tracking-wide text-xl font-serif">Ezra Park</span>
+            <span className="tracking-wide text-xl font-serif">Erza Spark</span>
           </div>
-          <div className="flex gap-2" ref={settingsRef}>
-            <button onClick={() => setShowSettings(!showSettings)} className={`p-2 transition-colors rounded-xl border ${showSettings ? 'bg-teal-500/20 text-teal-400 border-teal-500/50' : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'}`}><Settings size={18} /></button>
-            
-            {showSettings && (
-              <div className="absolute left-64 top-16 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-5 z-50">
-                <h4 className="font-bold text-white flex items-center gap-2 mb-4"><Type size={16} className="text-teal-400"/> Typographie Globale</h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Police</label>
-                    <div className="flex gap-2">
-                      {[{c:'font-sans', l:'Sans'}, {c:'font-serif', l:'Serif'}, {c:'font-mono', l:'Mono'}].map(f => (
-                        <button key={f.c} onClick={() => { setAppSettings(p => ({...p, fontFamily: f.c})); setSyncStatus('saving'); }} className={`flex-1 py-2 text-xs rounded-lg border ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400'}`}>{f.l}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2 block">Espacement</label>
-                    <div className="flex gap-2">
-                      {[{c:'leading-snug', l:'Serré'}, {c:'leading-relaxed', l:'Normal'}, {c:'leading-loose', l:'Aéré'}].map(l => (
-                        <button key={l.c} onClick={() => { setAppSettings(p => ({...p, lineSpacing: l.c})); setSyncStatus('saving'); }} className={`flex-1 py-2 text-xs rounded-lg border font-medium ${appSettings.lineSpacing === l.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400'}`}>{l.l}</button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
+          <div className="flex gap-2">
+            <button onClick={() => {setSidebarTab('settings'); setViewMode('settings'); if(window.innerWidth < 1024) setLeftSidebarOpen(false);}} className={`p-2 transition-colors rounded-xl border ${sidebarTab === 'settings' ? 'bg-teal-500/20 text-teal-400 border-teal-500/50' : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'}`}><Settings size={18} /></button>
             <button className="lg:hidden p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl" onClick={() => setLeftSidebarOpen(false)}><X size={20} /></button>
           </div>
         </div>
 
         <div className="p-4 shrink-0 border-b border-slate-800/50 font-sans">
-          <div className="grid grid-cols-3 gap-2 bg-slate-950 rounded-2xl p-2 border border-slate-800">
-            <button onClick={() => setSidebarTab('files')} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'files' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><FileText size={18}/> Notes</button>
-            <button onClick={() => setSidebarTab('mindmaps')} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'mindmaps' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><Network size={18}/> Cartes</button>
-            <button onClick={() => { setSidebarTab('agenda'); setViewMode('agenda'); if(window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`flex flex-col justify-center items-center gap-1.5 text-[11px] font-bold py-2.5 rounded-xl transition-all ${sidebarTab === 'agenda' ? 'bg-teal-600/20 text-teal-400 shadow border border-teal-500/30' : 'text-slate-500 hover:text-slate-300'}`}><Calendar size={18}/> Agenda</button>
+          <div className="grid grid-cols-4 gap-1.5 bg-slate-950 rounded-2xl p-1.5 border border-slate-800">
+            <button onClick={() => setSidebarTab('files')} className={`flex flex-col justify-center items-center gap-1.5 text-[10px] font-bold py-2 rounded-xl transition-all ${sidebarTab === 'files' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><FileText size={16}/> Notes</button>
+            <button onClick={() => setSidebarTab('mindmaps')} className={`flex flex-col justify-center items-center gap-1.5 text-[10px] font-bold py-2 rounded-xl transition-all ${sidebarTab === 'mindmaps' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}><Network size={16}/> Cartes</button>
+            <button onClick={() => { setSidebarTab('agenda'); setViewMode('agenda'); if(window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`flex flex-col justify-center items-center gap-1.5 text-[10px] font-bold py-2 rounded-xl transition-all ${sidebarTab === 'agenda' ? 'bg-teal-600/20 text-teal-400 shadow border border-teal-500/30' : 'text-slate-500 hover:text-slate-300'}`}><Calendar size={16}/> Agenda</button>
+            <button onClick={() => { setSidebarTab('trash'); setViewMode('trash'); if(window.innerWidth < 1024) setLeftSidebarOpen(false); }} className={`flex flex-col justify-center items-center gap-1.5 text-[10px] font-bold py-2 rounded-xl transition-all ${sidebarTab === 'trash' ? 'bg-rose-500/20 text-rose-400 shadow border border-rose-500/30' : 'text-slate-500 hover:text-rose-400'}`}><Trash size={16}/> Corbeille</button>
           </div>
         </div>
 
@@ -1233,12 +1311,12 @@ function MainApp() {
           <button onClick={openDailyNote} className="w-full mb-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors border border-slate-700 shadow-sm">
              <BookOpen size={16} /> Mon Journal
           </button>
-          {(sidebarTab === 'files' || sidebarTab === 'mindmaps') && (
+          {['files', 'mindmaps'].includes(sidebarTab) && (
             <button onClick={() => createDocument(sidebarTab === 'files' ? 'note' : 'mindmap')} className="w-full mb-5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-teal-500/20">
               <Plus size={18} /> {sidebarTab === 'files' ? 'Créer une Note' : 'Créer une Carte'}
             </button>
           )}
-          {sidebarTab !== 'agenda' && (
+          {['files', 'mindmaps'].includes(sidebarTab) && (
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-500 transition-colors" size={16} />
               <input type="text" placeholder="Recherche (Texte masqué si cadenas)..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 text-[14px] text-slate-200 rounded-xl py-3 pl-10 pr-4 outline-none border border-slate-800 focus:border-teal-500/50 transition-all placeholder-slate-600 shadow-inner" />
@@ -1249,12 +1327,11 @@ function MainApp() {
         <div className="flex-1 overflow-y-auto px-4 custom-scrollbar pb-6 font-sans">
           {sidebarTab === 'files' && (
             searchQuery ? (
-              // VUE DE RECHERCHE (FLAT LIST POUR ÉVITER LE BUG DES DOSSIERS FERMÉS)
               <div className="space-y-2 mt-2">
                 <h4 className="text-[11px] font-bold text-teal-500 uppercase tracking-wider mb-3 pl-2">Résultats de recherche ({textNotes.length})</h4>
                 {textNotes.length === 0 && <p className="text-center text-sm text-slate-600 mt-6 font-serif italic">Aucune note trouvée.</p>}
                 {textNotes.map(note => {
-                  const isSelected = activeNoteId === note.id && !['agenda', 'graph'].includes(viewMode);
+                  const isSelected = activeNoteId === note.id && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode);
                   const isSecured = note.isLocked && !unlockedNotes.has(note.id);
                   let snippetHtml = null;
                   if (note.plainText && !isSecured) snippetHtml = getSnippet(note.plainText, searchQuery);
@@ -1281,7 +1358,6 @@ function MainApp() {
                 })}
               </div>
             ) : (
-              // VUE NORMALE (DOSSIERS)
               allFolderNames.map(folderName => (
                 <div key={folderName} className="mb-2">
                   <div 
@@ -1296,7 +1372,7 @@ function MainApp() {
                   {expandedFolders[folderName] && (
                     <div className="pl-6 border-l-2 border-slate-800 ml-3 mt-1 space-y-1">
                       {folders[folderName].map(note => {
-                        const isSelected = activeNoteId === note.id && !['agenda', 'graph'].includes(viewMode);
+                        const isSelected = activeNoteId === note.id && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode);
                         const isSecured = note.isLocked && !unlockedNotes.has(note.id);
 
                         return (
@@ -1347,14 +1423,39 @@ function MainApp() {
               })}
             </div>
           )}
+
+          {sidebarTab === 'trash' && (
+             <div className="text-center p-5 text-slate-500 text-sm bg-slate-950 rounded-2xl border border-slate-800 shadow-inner">
+               <Trash className="mx-auto mb-3 text-rose-500 opacity-50" size={32} />
+               <p className="font-serif italic mb-4">Éléments supprimés ({trashNotes.length})</p>
+               <div className="space-y-2">
+                 {trashNotes.map(n => (
+                   <div key={n.id} className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-left">
+                     <span className="text-xs truncate text-slate-300 w-[150px]">{n.title || 'Sans titre'}</span>
+                     <div className="flex gap-1 shrink-0">
+                       <button onClick={() => restoreNote(n.id)} className="p-1.5 bg-teal-500/10 text-teal-400 rounded-lg hover:bg-teal-500/20" title="Restaurer"><RotateCcw size={14}/></button>
+                       <button onClick={() => permanentDeleteNote(n.id)} className="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500/20" title="Suppression Définitive"><Trash2 size={14}/></button>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          )}
         </div>
 
-        {/* Sync Status Footer */}
-        <div className="px-5 py-3 text-xs font-medium border-t border-slate-800 flex items-center justify-between bg-slate-950 shrink-0 font-sans">
-          <span className="text-slate-500">Cloud</span>
-          {syncStatus === 'synced' ? <span className="flex items-center gap-1.5 text-teal-500"><Cloud size={14} /> Synchronisé</span>
-          : syncStatus === 'saving' ? <span className="flex items-center gap-1.5 text-amber-500"><Save className="animate-pulse" size={14} /> Sauvegarde...</span>
-          : <span className="flex items-center gap-1.5 text-rose-500"><CloudOff size={14} /> Hors ligne</span>}
+        {/* BOTTOM USER PROFILE AREA */}
+        <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
+           <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                <User size={16} />
+              </div>
+              <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
+                {user?.email || "Connecté"}
+              </div>
+           </div>
+           <button onClick={() => auth && signOut(auth)} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
+             <LogOut size={16}/>
+           </button>
         </div>
       </div>
 
@@ -1373,6 +1474,10 @@ function MainApp() {
                <span className="text-sm md:text-base font-semibold text-teal-400 flex items-center gap-2 bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20"><Calendar size={16} /> Emploi du Temps</span>
             ) : viewMode === 'graph' ? (
                <span className="text-sm md:text-base font-semibold text-teal-400 flex items-center gap-2 bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20"><Network size={16} /> Second Cerveau</span>
+            ) : viewMode === 'settings' ? (
+               <span className="text-sm md:text-base font-semibold text-teal-400 flex items-center gap-2 bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20"><Settings size={16} /> Paramètres</span>
+            ) : viewMode === 'trash' ? (
+               <span className="text-sm md:text-base font-semibold text-rose-400 flex items-center gap-2 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20"><Trash size={16} /> Corbeille</span>
             ) : activeNote ? (
               <div className="flex items-center gap-2 text-slate-300 w-full max-w-[400px] justify-center">
                 {activeNote.isLocked && !unlockedNotes.has(activeNote.id) ? (
@@ -1396,7 +1501,7 @@ function MainApp() {
             <button onClick={() => setViewMode(viewMode === 'graph' ? 'editor' : 'graph')} className={`p-1.5 sm:p-2 rounded-xl transition-all ${viewMode === 'graph' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Graphe Cérébral"><Network size={18} /></button>
 
             {/* Lock / Unlock Note Configuration */}
-            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+            {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && (
                <div className="relative" ref={lockConfigRef}>
                  <button onClick={() => setShowLockConfig(!showLockConfig)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${activeNote.isLocked ? 'bg-rose-500/20 text-rose-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Sécurité de la note">{activeNote.isLocked ? <Lock size={18} /> : <Unlock size={18} />}</button>
                  {showLockConfig && (
@@ -1427,7 +1532,7 @@ function MainApp() {
             )}
             
             {/* FOLDER CLASSIFICATION (NOW VISIBLE ON MOBILE) */}
-            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+            {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && (
                <div className="relative" ref={propertiesRef}>
                  <button onClick={() => setShowProperties(!showProperties)} className={`p-1.5 sm:p-2 rounded-xl transition-colors ${showProperties ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Classer dans un dossier"><Folder size={18} /></button>
                  {showProperties && (
@@ -1464,18 +1569,61 @@ function MainApp() {
                </div>
             )}
             
-            {activeNote && !['agenda', 'graph'].includes(viewMode) && (
+            {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && (
                <button onClick={() => setRightSidebarOpen(!rightSidebarOpen)} className={`p-1.5 sm:p-2 rounded-xl transition-colors hidden lg:block ${rightSidebarOpen ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Ouvrir Rétroliens"><SidebarClose size={20} /></button>
             )}
             
             {/* TRASH ICON (NOW VISIBLE ON MOBILE) */}
-            {activeNote && !['agenda', 'graph'].includes(viewMode) && <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors ml-1"><Trash2 size={18} /></button>}
+            {activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) && <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors ml-1"><Trash2 size={18} /></button>}
           </div>
         </div>
 
         {/* WORKSPACE CONTENT */}
         <div className="flex-1 flex overflow-hidden relative">
-          {viewMode === 'graph' ? (
+          {viewMode === 'settings' ? (
+             <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-950 text-slate-400 font-sans">
+                <div className="bg-slate-900 border border-slate-800 p-10 rounded-3xl max-w-2xl w-full shadow-2xl">
+                  <h2 className="text-2xl font-serif text-white font-bold mb-6 border-b border-slate-800 pb-4">Paramètres Erza Spark</h2>
+                  
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Typographie de l'éditeur</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[{c:'font-sans', l:'Sans Serif (Moderne)'}, {c:'font-serif', l:'Serif (Classique)'}, {c:'font-mono', l:'Mono (Code)'}].map(f => (
+                          <button key={f.c} onClick={() => { setAppSettings(p => ({...p, fontFamily: f.c})); setSyncStatus('saving'); }} className={`py-3 px-4 rounded-xl border transition-all ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>{f.l}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Espacement des lignes</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[{c:'leading-snug', l:'Serré'}, {c:'leading-relaxed', l:'Normal'}, {c:'leading-loose', l:'Aéré'}].map(l => (
+                          <button key={l.c} onClick={() => { setAppSettings(p => ({...p, lineSpacing: l.c})); setSyncStatus('saving'); }} className={`py-3 px-4 rounded-xl border transition-all ${appSettings.lineSpacing === l.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>{l.l}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                       <h3 className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-3">Zone de Danger</h3>
+                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles et n'affectent que le compte <b>{user?.email}</b>.</p>
+                       <button onClick={() => {
+                         if(window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT toutes les notes de la corbeille ?")) {
+                           const trash = notes.filter(n => n.isDeleted);
+                           trash.forEach(t => permanentDeleteNote(t.id));
+                         }
+                       }} className="bg-slate-950 border border-rose-500/50 text-rose-400 hover:bg-rose-500 hover:text-white px-5 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2">
+                         <Trash2 size={16} /> Vider la corbeille
+                       </button>
+                    </div>
+                  </div>
+                </div>
+             </div>
+          ) : viewMode === 'trash' ? (
+             <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-950 text-slate-400 font-sans">
+                <Trash size={64} className="text-slate-800 mb-6" />
+                <h2 className="text-2xl font-serif text-white font-bold mb-2">Corbeille</h2>
+                <p className="text-sm mb-8">Ouvrez le menu latéral gauche pour restaurer ou supprimer définitivement vos notes.</p>
+             </div>
+          ) : viewMode === 'graph' ? (
              <GraphView notes={notes} unlockedNotes={unlockedNotes} onNodeClick={(n) => { 
                 if (n.isLocked && !unlockedNotes.has(n.id)) {
                   setActiveNoteId(n.id);
@@ -1488,10 +1636,11 @@ function MainApp() {
           ) : viewMode === 'agenda' ? (
             <SimpleAgenda agendaEvents={agendaEvents} updateAgendaEvents={(data) => { setAgendaEvents(data); setSyncStatus('saving'); }} />
           ) : isNoteLocked ? (
-            <PasswordPrompt key={activeNote.id} note={activeNote} onUnlock={(id) => {
+            <PasswordPrompt key={activeNote.id} note={activeNote} userEmail={user?.email} onUnlock={(id, resetPwd = false) => {
               const newSet = new Set(unlockedNotes);
               newSet.add(id);
               setUnlockedNotes(newSet);
+              if (resetPwd) updateActiveNote({ isLocked: false, lockPassword: '' });
             }} />
           ) : viewMode === 'mindmap' && activeNote ? (
             <MindMapCanvas note={activeNote} updateNote={updateActiveNote} navigateToLink={navigateToLink} searchQuery={searchQuery} />
@@ -1562,7 +1711,7 @@ function MainApp() {
               <div className="bg-slate-900 p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl flex flex-col items-center text-center max-w-md w-full relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-purple-500"></div>
                 <Feather size={56} className="mb-6 text-teal-500/40" strokeWidth={1.5} />
-                <h2 className="text-3xl font-serif font-bold text-white mb-3 tracking-wide">Ezra Park</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-3 tracking-wide">Erza Spark</h2>
                 <p className="text-sm text-slate-400 mb-8 leading-relaxed font-medium">L'élégance de la pensée structurée. Second Cerveau connecté.</p>
                 <div className="flex flex-col gap-3 w-full">
                   <button onClick={() => createDocument('note')} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20"><Plus size={18} /> Nouvelle Note</button>
@@ -1598,6 +1747,33 @@ function MainApp() {
   );
 }
 
+// --- APP WRAPPER (MANAGES AUTH STATE) ---
+const AppWrapper = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!auth) { setLoading(false); return; }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><Feather className="animate-pulse" size={48} /></div>;
+  }
+
+  // Si non connecté -> Ecran d'authentification
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  // Si connecté -> L'application complète avec l'utilisateur
+  return <MainApp user={user} />;
+};
+
 // --- SECURE ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -1619,7 +1795,7 @@ class ErrorBoundary extends React.Component {
         </div>
       );
     }
-    return <MainApp />;
+    return <AppWrapper />;
   }
 }
 
