@@ -902,7 +902,7 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
     const isDesynced = !isFocused && strippedRaw !== note.content && note.content;
 
     if (noteChanged || searchChanged || isDesynced) {
-      let htmlText = note.content || '<h1>Nouvelle Note</h1><p><br></p>';
+      let htmlText = note.content || '<p><br></p>';
       if (searchQuery && !isFocused) htmlText = applyHighlightsSafe(htmlText, searchQuery);
       editorRef.current.innerHTML = htmlText;
 
