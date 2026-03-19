@@ -234,7 +234,19 @@ const AuthScreen = ({ onGuestLogin }) => {
     } catch (err) {
       console.error(err);
       const msg = err && err.message ? err.message : String(err);
-      setError(msg.includes('auth/') ? "Email ou mot de passe invalide." : "Erreur : " + msg);
+      
+      // Traduction des véritables erreurs Firebase en français clair
+      if (msg.includes('auth/operation-not-allowed')) {
+         setError("Erreur : L'authentification par Email n'est pas activée dans votre console Firebase (Onglet Authentication).");
+      } else if (msg.includes('auth/email-already-in-use')) {
+         setError("Cet email est déjà utilisé par un compte existant.");
+      } else if (msg.includes('auth/weak-password')) {
+         setError("Le mot de passe est trop faible (minimum 6 caractères).");
+      } else if (msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password') || msg.includes('auth/user-not-found') || msg.includes('auth/invalid-email')) {
+         setError("Email ou mot de passe incorrect.");
+      } else {
+         setError("Erreur de connexion : " + msg);
+      }
     } finally {
       setLoading(false);
     }
