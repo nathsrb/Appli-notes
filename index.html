@@ -220,7 +220,8 @@ const AuthScreen = ({ onGuestLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleAuth = async (e) => {
+  const handlePasswordReset = async () => { if (!email) { setError('Entrez votre email.'); return; } try { await auth.sendPasswordResetEmail(email); setError(''); alert('Email de réinitialisation envoyé 00e0 ' + email); } catch(err) { setError('Erreur : ' + (err.message||String(err))); } };
+        const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -284,6 +285,7 @@ const AuthScreen = ({ onGuestLogin }) => {
             ${loading ? html`<${RefreshCw} className="animate-spin" size=${18} />` : (isLogin ? "Connexion Cloud" : "S'inscrire (Cloud)")}
           </button>
         </form>
+                ${isLogin ? html`<button type="button" onClick=${handlePasswordReset} class="w-full text-sm text-teal-400 hover:text-teal-300 mt-2">Mot de passe oublié ?</button>` : ''}
 
         <div className="mt-4 flex flex-col gap-3">
           <button onClick=${() => { setIsLogin(!isLogin); setError(''); }} className="text-sm text-slate-400 hover:text-teal-400 transition-colors">
