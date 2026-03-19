@@ -1805,7 +1805,7 @@ function MainApp({ user, onLogout }) {
 // --- APP WRAPPER (MANAGES AUTH STATE) ---
 const AppWrapper = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!auth) { setLoading(false); return; }     const timeout = setTimeout(() => setLoading(false), 1500);
