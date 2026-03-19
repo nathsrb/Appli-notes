@@ -1230,7 +1230,7 @@ function MainApp({ user, onLogout }) {
       title: customTitle || (type === 'note' ? 'Nouvelle Note' : 'Nouvelle Carte'),
       type: type,
       folder: customFolder,
-      content: customContent || (type === 'note' ? '<h1>Nouvelle Note</h1><p><br></p>' : JSON.stringify([{id:'root', parentId: null, text:''}])),
+      content: customContent || (type === 'note' ? '<p><br></p>' : JSON.stringify([{id:'root', parentId: null, text:''}])),
       plainText: type === 'note' ? 'Nouvelle Note' : '',
       isLocked: false,
       lockPassword: '',
