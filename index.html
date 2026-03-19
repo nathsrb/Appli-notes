@@ -1808,12 +1808,12 @@ const AppWrapper = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) { setLoading(false); return; }
+    if (!auth) { setLoading(false); return; }     const timeout = setTimeout(() => setLoading(false), 5000);
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => { unsubscribe(); clearTimeout(timeout); };
   }, []);
 
   const handleGuestLogin = () => {
