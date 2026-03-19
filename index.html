@@ -1808,7 +1808,7 @@ const AppWrapper = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) { setLoading(false); return; }     const timeout = setTimeout(() => setLoading(false), 5000);
+    if (!auth) { setLoading(false); return; }     const timeout = setTimeout(() => setLoading(false), 1500);
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setLoading(false);
