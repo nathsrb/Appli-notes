@@ -1075,7 +1075,7 @@ function MainApp({ user, onLogout }) {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState('files'); 
   const [syncStatus, setSyncStatus] = useState('synced');
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(false);
   
   const [appSettings, setAppSettings] = useState({ fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed' });
   const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
