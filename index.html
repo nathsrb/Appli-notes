@@ -2,34 +2,38 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Le tag viewport ultime contre le zoom automatique d'iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>Erza Spark</title>
     
     <!-- Tailwind CSS pour le design -->
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="theme-color" content="#020617">
 
-    <!-- CHARGEMENT REACT & HTM (AUCUN BABEL !) -->
+    <!-- CHARGEMENT REACT & HTM (AUCUN BABEL, JAVASCRIPT PUR !) -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
     
-    <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS) -->
+    <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS Uniquement) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <!-- Firebase Officiel (Version Compatibilité Globale) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
       body { background-color: #020617; }
+      
+      /* --- CORRECTIF VITAL SAFARI iOS --- */
+      /* Force la taille à 16px minimum pour désactiver le zoom automatique destructeur de Safari */
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #475569; }
       ::selection { background-color: rgba(20, 184, 166, 0.3); color: white; }
       
+      /* TYPOGRAPHIE THEME SOMBRE (DÉFAUT) */
       .ezra-editor { padding-bottom: 200px; }
       .ezra-editor h1 { font-family: ui-serif, Georgia, serif; font-size: 2.5em; font-weight: 800; margin-top: 1em; margin-bottom: 0.5em; letter-spacing: -0.02em; color: white; }
       .ezra-editor h2 { font-family: ui-serif, Georgia, serif; font-size: 1.8em; font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.5); padding-bottom: 0.2em; }
@@ -41,17 +45,28 @@
       .ezra-editor blockquote { border-left: 4px solid #14b8a6; padding-left: 1em; margin: 1em 0; font-style: italic; color: #94a3b8; background: rgba(20,184,166,0.05); padding: 0.5em 1em; border-radius: 0 8px 8px 0; font-family: ui-serif, Georgia, serif; font-size: 1.1em;}
       .ezra-editor strong, .ezra-editor b { color: white; font-weight: 700; }
       .ezra-editor:empty:before { content: attr(placeholder); color: #475569; pointer-events: none; display: block; }
+
+      /* TYPOGRAPHIE THEME CLAIR (NOUVEAU) */
+      .ezra-editor.light-mode { color: #1e293b; }
+      .ezra-editor.light-mode h1 { color: #000000; }
+      .ezra-editor.light-mode h2 { color: #0f172a; border-bottom-color: #cbd5e1; }
+      .ezra-editor.light-mode h3 { color: #334155; }
+      .ezra-editor.light-mode blockquote { color: #475569; background: rgba(20,184,166,0.1); border-left-color: #0d9488; }
+      .ezra-editor.light-mode strong, .ezra-editor.light-mode b { color: #000000; }
+      .ezra-editor.light-mode:empty:before { color: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-300 m-0 p-0 overflow-hidden">
     <div id="root"></div>
 
+    <!-- SCRIPT CLASSIQUE (AUCUN TYPE MODULE NI BABEL) -->
     <script type="text/javascript">
 const { useState, useEffect, useRef, useMemo, useCallback } = window.React;
 const { createRoot } = window.ReactDOM;
-const html = htm.bind(React.createElement);
+// Initialisation de HTM pour remplacer le JSX
+const html = window.htm.bind(window.React.createElement);
 
-// --- ICONS ---
+// --- INITIALISATION DES ICÔNES ---
 const createIcon = (iconClass) => ({ size = 24, className = "", strokeWidth, ...props }) => {
   const sz = typeof size === 'number' ? size + 'px' : size;
   return html`<i className=${`ph ${iconClass} ${className} flex items-center justify-center leading-none`} style=${{ fontSize: sz, width: sz, height: sz }} ...${props}></i>`;
@@ -68,8 +83,6 @@ const X = createIcon('ph-x');
 const Folder = createIcon('ph-folder');
 const FolderOpen = createIcon('ph-folder-open');
 const Save = createIcon('ph-floppy-disk');
-const Cloud = createIcon('ph-cloud');
-const CloudOff = createIcon('ph-cloud-slash');
 const SidebarClose = createIcon('ph-sidebar-simple');
 const SidebarOpen = createIcon('ph-list');
 const ChevronRight = createIcon('ph-caret-right');
@@ -93,31 +106,28 @@ const CheckSquare = createIcon('ph-check-square');
 const RefreshCw = createIcon('ph-arrows-clockwise');
 const Feather = createIcon('ph-feather');
 const Settings = createIcon('ph-gear');
-const Type = createIcon('ph-text-t');
 const Edit3 = createIcon('ph-pencil-simple');
 const LinkIcon = createIcon('ph-link');
-const Info = createIcon('ph-info');
 const Quote = createIcon('ph-quotes');
 const Undo = createIcon('ph-arrow-u-up-left');
 const Redo = createIcon('ph-arrow-u-up-right');
 const Lock = createIcon('ph-lock-key');
 const Unlock = createIcon('ph-lock-key-open');
 const Calendar = createIcon('ph-calendar');
-const Palette = createIcon('ph-palette');
-const Grid = createIcon('ph-squares-four');
-const User = createIcon('ph-user');
+const UserIcon = createIcon('ph-user');
 const LogOut = createIcon('ph-sign-out');
 const Mail = createIcon('ph-envelope-simple');
 const RotateCcw = createIcon('ph-clock-counter-clockwise');
-const AlertTriangle = createIcon('ph-warning');
+const Sun = createIcon('ph-sun');
+const Moon = createIcon('ph-moon');
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
 const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const stripHtml = (html) => {
-  if (!html) return '';
-  return html.replace(/<br\s*\/?>/gi, ' ').replace(/<\/p>/gi, ' ').replace(/<\/h[1-6]>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const stripHtml = (htmlText) => {
+  if (!htmlText) return '';
+  return htmlText.replace(/<br\s*\/?>/gi, ' ').replace(/<\/p>/gi, ' ').replace(/<\/h[1-6]>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
 const highlightTitle = (title, query) => {
@@ -192,123 +202,8 @@ function useOnClickOutside(ref, handler) {
   }, [ref, handler]);
 }
 
-// --- FIREBASE SETUP ---
-let app, auth, db;
-const appId = 'erza-spark-production';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyA284TTA7F8bjOtbvb-Pi5ixMZjuQReISg",
-  authDomain: "ezra-spark.firebaseapp.com",
-  projectId: "ezra-spark",
-  storageBucket: "ezra-spark.firebasestorage.app",
-  messagingSenderId: "379462215469",
-  appId: "1:379462215469:web:2c12802420c76b644d15a4"
-};
-
-// Initialisation sans blocage (Try/catch retiré, les clés sont définitives)
-if (window.firebase) {
-  app = window.firebase.initializeApp(firebaseConfig);
-  auth = window.firebase.auth();
-  db = window.firebase.firestore();
-}
-
-// --- AUTHENTICATION SCREEN ---
-const AuthScreen = ({ onGuestLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handlePasswordReset = async () => { if (!email) { setError('Entrez votre email.'); return; } try { await auth.sendPasswordResetEmail(email); setError(''); alert('Email de réinitialisation envoyé 00e0 ' + email); } catch(err) { setError('Erreur : ' + (err.message||String(err))); } };
-        const handleAuth = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      if (!auth) throw new Error("Le service Cloud Firebase n'est pas joignable.");
-      if (isLogin) {
-        await auth.signInWithEmailAndPassword(email, password);
-      } else {
-        await auth.createUserWithEmailAndPassword(email, password);
-      }
-    } catch (err) {
-      console.error(err);
-      const msg = err && err.message ? err.message : String(err);
-      
-      // Traduction des véritables erreurs Firebase en français clair
-      if (msg.includes('auth/operation-not-allowed')) {
-         setError("Erreur : L'authentification par Email n'est pas activée dans votre console Firebase (Onglet Authentication).");
-      } else if (msg.includes('auth/email-already-in-use')) {
-         setError("Cet email est déjà utilisé par un compte existant.");
-      } else if (msg.includes('auth/weak-password')) {
-         setError("Le mot de passe est trop faible (minimum 6 caractères).");
-      } else if (msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password') || msg.includes('auth/user-not-found') || msg.includes('auth/invalid-email')) {
-         setError("Email ou mot de passe incorrect.");
-      } else {
-         setError("Erreur de connexion : " + msg);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return html`
-    <div className="flex h-screen w-full bg-slate-950 items-center justify-center p-4">
-      <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden flex flex-col">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
-        <div className="text-center mb-8">
-          <${Feather} size=${48} className="mx-auto mb-4 text-teal-500/40" />
-          <h2 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">Erza Spark</h2>
-          <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté.</p>
-        </div>
-
-        <form onSubmit=${handleAuth} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
-            <div className="relative">
-              <${Mail} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size=${16} />
-              <input type="email" value=${email} onChange=${(e) => setEmail(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="votre@email.com" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Mot de passe</label>
-            <div className="relative">
-              <${Lock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size=${16} />
-              <input type="password" value=${password} onChange=${(e) => setPassword(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="••••••••" />
-            </div>
-          </div>
-          
-          ${error ? html`<div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium text-center">${error}</div>` : null}
-
-          <button type="submit" disabled=${loading} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-teal-500/20 mt-4 flex justify-center items-center gap-2 disabled:opacity-50">
-            ${loading ? html`<${RefreshCw} className="animate-spin" size=${18} />` : (isLogin ? "Connexion Cloud" : "S'inscrire (Cloud)")}
-          </button>
-        </form>
-                ${isLogin ? html`<button type="button" onClick=${handlePasswordReset} class="w-full text-sm text-teal-400 hover:text-teal-300 mt-2">Mot de passe oublié ?</button>` : ''}
-
-        <div className="mt-4 flex flex-col gap-3">
-          <button onClick=${() => { setIsLogin(!isLogin); setError(''); }} className="text-sm text-slate-400 hover:text-teal-400 transition-colors">
-            ${isLogin ? "Nouveau ici ? Créer un compte" : "Déjà membre ? Se connecter"}
-          </button>
-          
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-bold tracking-wider">OU</span>
-            <div className="flex-grow border-t border-slate-800"></div>
-          </div>
-
-          <button onClick=${onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700">
-            <${Save} size=${18} /> Continuer sans compte (Local)
-          </button>
-          <p className="text-[10px] text-slate-500 text-center px-4">En mode local, vos notes sont sauvegardées uniquement dans la mémoire de ce téléphone.</p>
-        </div>
-      </div>
-    </div>
-  `;
-};
-
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est officiellement opérationnel et stable.</p><h2>🔒 Nouveautés :</h2><ul><li><strong>Mode Local blindé :</strong> Vous pouvez tester l\'application sans créer de compte en toute sécurité.</li><li><strong>Cloud Firebase :</strong> Vos clés de production sont intégrées et prêtes à l\'emploi.</li><li><strong>Corbeille & Mot de passe :</strong> Tout est opérationnel.</li></ul>';
+// --- DONNÉES INITIALES ---
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark fonctionne 100% hors-ligne. Vos données sont chez vous.</p><h2>🔒 Nouveautés Actives :</h2><ul><li><strong>Incassable sur iOS :</strong> Plus de problèmes de zoom. L\'application fonctionne à merveille.</li><li><strong>Thème Clair :</strong> Allez dans les paramètres pour illuminer votre zone de texte !</li><li><strong>Corbeille Fiabilisée :</strong> Les notes supprimées ne reviendront plus vous hanter.</li></ul>';
 
 const initialNotes = [
   {
@@ -334,6 +229,7 @@ const MATRIX_COLORS = [
   { class: 'bg-slate-500/10 border-slate-500/30 text-slate-300', bg: 'bg-slate-500', action: 'Éliminer', sub: 'Ni Urg. Ni Imp.', icon: '⚪' }
 ];
 
+// --- AGENDA COMPONENT ---
 const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   const safeEvents = Array.isArray(agendaEvents) ? agendaEvents : [];
 
@@ -403,7 +299,8 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   `;
 };
 
-const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
+// --- RECUPERATION MOT DE PASSE (LOCAL) ---
+const PasswordPrompt = ({ note, onUnlock }) => {
   const [pwd, setPwd] = useState('');
   const [err, setErr] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
@@ -427,11 +324,7 @@ const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
   };
 
   const startRecovery = () => {
-    if(userEmail === 'Invité (Local)') {
-      alert("Mode local : Un code de secours (0000) a été généré pour vous permettre de déverrouiller la note.");
-    } else {
-      alert(`(Simulation) Un code de sécurité a été envoyé à votre adresse email : ${userEmail}. \nPour cette démo, le code est : 0000`);
-    }
+    alert("Mode local : Un code maître d'urgence a été défini pour éviter la perte de données.\n\nLe code est : 0000");
     setRecoveryMode(true);
   };
 
@@ -442,7 +335,7 @@ const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
           <${Mail} size=${40} className="mb-4 text-amber-500/80" />
           <h2 className="text-2xl font-serif font-bold text-white mb-2">Récupération</h2>
-          <p className="text-sm text-slate-400 mb-6 font-medium">Entrez le code reçu à <b>${userEmail}</b></p>
+          <p className="text-sm text-slate-400 mb-6 font-medium">Entrez le code de sécurité maître</p>
           
           <input type="text" value=${recoveryCodeInput} onChange=${(e) => setRecoveryCodeInput(e.target.value)} required
             className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3.5 outline-none focus:border-amber-500 text-center tracking-[0.5em] font-mono mb-4 text-xl shadow-inner" placeholder="----" autoFocus=${true} />
@@ -485,7 +378,8 @@ const PasswordPrompt = ({ note, userEmail, onUnlock }) => {
   `;
 }
 
-const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
+// --- GLOBAL GRAPH VIEW ---
+const GraphView = ({ notes, onNodeClick, unlockedNotes, onExit }) => {
   const canvasRef = useRef(null);
   
   const { nodes, edges } = useMemo(() => {
@@ -643,12 +537,19 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes }) => {
         <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
         <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites</div>
       </div>
+      
+      <!-- Bouton d'échappatoire garanti en bas à droite -->
+      <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
+        <button onClick=${onExit} className="bg-rose-600 p-3 rounded-full shadow-lg border border-rose-500 text-white hover:bg-rose-500 transition-all"><${X} size=${24}/></button>
+      </div>
+
       <canvas ref=${canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
     </div>
   `;
 };
 
-const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
+// --- MIND MAP ENGINE ---
+const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }) => {
   const containerRef = useRef(null);
   const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
   const [selection, setSelection] = useState('root');
@@ -671,10 +572,10 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       const plainText = nodes.map(n => n.text).join(' ');
-      updateNote({ content: JSON.stringify(nodes), plainText });
+      updateNote(note.id, { content: JSON.stringify(nodes), plainText });
     }, 500);
     return () => clearTimeout(timer);
-  }, [nodes, updateNote]);
+  }, [nodes, note.id, updateNote]);
 
   const layout = useMemo(() => {
     try {
@@ -831,10 +732,12 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
     <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref=${containerRef} onWheel=${handleWheel} onPointerDown=${handlePointerDown} onPointerMove=${handlePointerMove} onPointerUp=${() => {dragState.current.type=null}} onPointerLeave=${() => {dragState.current.type=null}} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove} onTouchEnd=${() => {dragState.current.type=null}} onTouchCancel=${() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style=${{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }}></div>
       
+      <!-- Boutons garantis en bas à droite -->
       <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
         <button onClick=${() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomIn} size=${24}/></button>
         <button onClick=${() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomOut} size=${24}/></button>
         <button onClick=${() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><${Target} size=${24}/></button>
+        <button onClick=${onExit} className="bg-rose-600 p-3 rounded-full shadow-lg border border-rose-500 text-white hover:bg-rose-500 transition-all mt-4"><${X} size=${24}/></button>
       </div>
 
       ${selection && !editingNodeId ? html`
@@ -888,12 +791,20 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery }) => {
   `;
 };
 
+// --- WYSIWYG EDITOR COMPONENT (AVEC THEME CLAIR) ---
 const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQuery }) => {
   const editorRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
   const savedSelection = useRef(null); 
   const prevNoteId = useRef(note.id);
   const prevSearch = useRef(searchQuery);
+
+  const isLight = appSettings?.theme === 'light';
+  const containerBg = isLight ? 'bg-slate-50' : 'bg-slate-950';
+  const toolbarBg = isLight ? 'bg-slate-200 border-slate-300' : 'bg-slate-900 border-slate-800';
+  const btnClass = isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-300' : 'text-slate-400 hover:text-white hover:bg-slate-800';
+  const selectBg = isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-slate-950 border-slate-700 text-slate-300';
+  const dividerClass = isLight ? 'bg-slate-300' : 'bg-slate-700';
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -904,7 +815,7 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
     const isDesynced = !isFocused && strippedRaw !== note.content && note.content;
 
     if (noteChanged || searchChanged || isDesynced) {
-      let htmlText = note.content || '<p><br></p>';
+      let htmlText = note.content || '<h1>Nouvelle Note</h1><p><br></p>';
       if (searchQuery && !isFocused) htmlText = applyHighlightsSafe(htmlText, searchQuery);
       editorRef.current.innerHTML = htmlText;
 
@@ -924,9 +835,9 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
     if (editorRef.current) {
       let rawHtml = editorRef.current.innerHTML;
       if (rawHtml.includes('search-hl')) rawHtml = stripHighlightsSafe(rawHtml);
-      updateNote({ content: rawHtml, plainText: stripHtml(rawHtml) });
+      updateNote(note.id, { content: rawHtml, plainText: stripHtml(rawHtml) });
     }
-  }, [updateNote]);
+  }, [updateNote, note.id]);
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -997,17 +908,17 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
 
   return html`
     <div className="flex flex-col w-full h-full bg-slate-950">
-      <div onMouseDown=${saveSelection} className="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-1 sm:gap-2 overflow-x-auto custom-scrollbar shrink-0 shadow-md z-10">
-        <button onClick=${(e) => execCmd(e, 'undo')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Annuler"><${Undo} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'redo')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Rétablir"><${Redo} size=${18}/></button>
+      <div onMouseDown=${saveSelection} className=${`h-14 ${toolbarBg} border-b flex items-center px-4 gap-1 sm:gap-2 overflow-x-auto custom-scrollbar shrink-0 shadow-md z-10`}>
+        <button onClick=${(e) => execCmd(e, 'undo')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Annuler"><${Undo} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'redo')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Rétablir"><${Redo} size=${18}/></button>
 
-        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        <div className=${`w-px h-6 ${dividerClass} mx-1 shrink-0`}></div>
 
-        <select onChange=${(e) => execCmd(e, 'fontName', e.target.value)} className="bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500">
+        <select onChange=${(e) => execCmd(e, 'fontName', e.target.value)} className=${`${selectBg} rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500`}>
           <option value="">Police</option>
           ${fonts.map(f => html`<option key=${f} value=${f}>${f}</option>`)}
         </select>
-        <select onChange=${(e) => execCmd(e, 'fontSize', e.target.value)} className="bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500">
+        <select onChange=${(e) => execCmd(e, 'fontSize', e.target.value)} className=${`${selectBg} rounded-lg p-1.5 text-xs sm:text-sm outline-none cursor-pointer focus:border-teal-500`}>
           <option value="">Taille</option>
           <option value="2">Petit</option>
           <option value="3">Normal</option>
@@ -1015,71 +926,94 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
           <option value="7">Géant</option>
         </select>
         
-        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        <div className=${`w-px h-6 ${dividerClass} mx-1 shrink-0`}></div>
         
-        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H1')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Grand Titre"><${Heading1} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H2')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Sous Titre"><${Heading2} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H3')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Petit Titre"><${Heading3} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H1')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Grand Titre"><${Heading1} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H2')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Sous Titre"><${Heading2} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'formatBlock', 'H3')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Petit Titre"><${Heading3} size=${18}/></button>
         
-        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        <div className=${`w-px h-6 ${dividerClass} mx-1 shrink-0`}></div>
         
-        <button onClick=${(e) => execCmd(e, 'bold')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Gras"><${Bold} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'italic')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Italique"><${Italic} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'underline')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Souligné"><${Underline} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'bold')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Gras"><${Bold} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'italic')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Italique"><${Italic} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'underline')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Souligné"><${Underline} size=${18}/></button>
         
-        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        <div className=${`w-px h-6 ${dividerClass} mx-1 shrink-0`}></div>
         
-        <button onClick=${(e) => execCmd(e, 'insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste à puces"><${ListIcon} size=${18}/></button>
-        <button onClick=${(e) => execCmd(e, 'insertOrderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Liste numérotée"><${ListOrdered} size=${18}/></button>
-        <button onClick=${insertCheckbox} className="p-2 text-slate-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors" title="Case à cocher"><${CheckSquare} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'insertUnorderedList')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Liste à puces"><${ListIcon} size=${18}/></button>
+        <button onClick=${(e) => execCmd(e, 'insertOrderedList')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Liste numérotée"><${ListOrdered} size=${18}/></button>
+        <button onClick=${insertCheckbox} className=${`p-2 ${isLight ? 'text-teal-600 hover:bg-teal-100' : 'text-slate-400 hover:text-teal-400 hover:bg-teal-500/10'} rounded-lg transition-colors`} title="Case à cocher"><${CheckSquare} size=${18}/></button>
         
-        <div className="w-px h-6 bg-slate-700 mx-1 shrink-0"></div>
+        <div className=${`w-px h-6 ${dividerClass} mx-1 shrink-0`}></div>
 
-        <button onClick=${(e) => execCmd(e, 'formatBlock', 'BLOCKQUOTE')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Citation"><${Quote} size=${18}/></button>
-        <button onClick=${insertInternalLink} className="p-2 text-teal-500 hover:text-white hover:bg-teal-500/20 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-transparent hover:border-teal-500/30" title="Lier une note (Second Cerveau)"><${LinkIcon} size=${16}/> Lien</button>
+        <button onClick=${(e) => execCmd(e, 'formatBlock', 'BLOCKQUOTE')} className=${`p-2 ${btnClass} rounded-lg transition-colors`} title="Citation"><${Quote} size=${18}/></button>
+        <button onClick=${insertInternalLink} className="p-2 text-teal-500 hover:text-teal-600 hover:bg-teal-500/20 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-transparent hover:border-teal-500/30" title="Lier une note (Second Cerveau)"><${LinkIcon} size=${16}/> Lien</button>
 
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 lg:px-24 scroll-smooth">
+      <div className=${`flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 lg:px-24 scroll-smooth ${containerBg}`}>
         <input 
           type="text" 
           value=${note.title || ''} 
-          onChange=${(e) => updateNote({ title: e.target.value })} 
-          className="w-full max-w-4xl mx-auto block bg-transparent text-3xl md:text-5xl font-serif font-extrabold text-white mb-6 pb-4 border-b border-slate-800/50 outline-none placeholder-slate-700 tracking-tight" 
+          onChange=${(e) => updateNote(note.id, { title: e.target.value })} 
+          className=${`w-full max-w-4xl mx-auto block bg-transparent text-3xl md:text-5xl font-serif font-extrabold mb-6 pb-4 border-b outline-none tracking-tight ${isLight ? 'text-slate-900 border-slate-300 placeholder-slate-400' : 'text-white border-slate-800/50 placeholder-slate-700'}`} 
           placeholder="Titre de la note"
         />
         <div 
           ref=${editorRef}
-          contentEditable=${true}
+          contentEditable="true"
           onFocus=${handleFocus}
           onBlur=${handleBlur}
           onInput=${handleInput}
           onClick=${handleEditorClick}
           onKeyUp=${saveSelection}
           onMouseUp=${saveSelection}
-          className=${`ezra-editor w-full max-w-4xl mx-auto min-h-[60vh] outline-none text-slate-300 pb-32 ${appSettings?.fontSize || 'text-[16px]'} ${appSettings?.lineSpacing || 'leading-relaxed'} ${appSettings?.fontFamily || 'font-sans'}`}
+          className=${`ezra-editor w-full max-w-4xl mx-auto min-h-[60vh] outline-none pb-32 ${appSettings?.fontSize || 'text-[16px]'} ${appSettings?.lineSpacing || 'leading-relaxed'} ${isLight ? 'light-mode' : 'text-slate-300'}`}
           placeholder="Écrivez vos pensées ici..."
-          suppressContentEditableWarning=${true}
+          suppressContentEditableWarning="true"
         ></div>
       </div>
     </div>
   `;
 };
 
-// --- MAIN APP (POST-LOGIN) ---
-function MainApp({ user, onLogout }) {
-  const [notes, setNotes] = useState([]);
-  const [agendaEvents, setAgendaEvents] = useState([]);
-  const [activeNoteId, setActiveNoteId] = useState(null);
+// --- MAIN APP ---
+function MainApp() {
+  // LECTURE LOCALE SECURISEE
+  const [notes, setNotes] = useState(() => {
+    try {
+      const localNotesStr = localStorage.getItem('erza_notes');
+      if (localNotesStr) {
+         const parsed = JSON.parse(localNotesStr);
+         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch(e){}
+    return initialNotes;
+  });
+  
+  const [agendaEvents, setAgendaEvents] = useState(() => {
+    try {
+      const s = localStorage.getItem('erza_settings');
+      if (s) { const p = JSON.parse(s); if(Array.isArray(p.agenda)) return p.agenda; }
+    } catch(e){}
+    return [];
+  });
+  
+  const [appSettings, setAppSettings] = useState(() => {
+    const defSettings = { fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed', theme: 'dark' };
+    try {
+      const s = localStorage.getItem('erza_settings');
+      if (s) { const p = JSON.parse(s); if(p.appSettings) return {...defSettings, ...p.appSettings}; }
+    } catch(e){}
+    return defSettings;
+  });
+
+  const [activeNoteId, setActiveNoteId] = useState(notes.length > 0 ? notes[0].id : null);
   const [viewMode, setViewMode] = useState('editor'); 
   const [searchQuery, setSearchQuery] = useState('');
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); 
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState('files'); 
-  const [syncStatus, setSyncStatus] = useState('synced');
-  const [isInitializing, setIsInitializing] = useState(true);
-  
-  const [appSettings, setAppSettings] = useState({ fontFamily: 'font-sans', fontSize: 'text-[16px]', lineSpacing: 'leading-relaxed' });
   const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
 
   const propertiesRef = useRef(null);
@@ -1097,131 +1031,14 @@ function MainApp({ user, onLogout }) {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // DATA SYNC ON LOAD
+  // SAUVEGARDE LOCALE INSTANTANÉE
   useEffect(() => {
-    if (!user) return;
-    
-    // GUEST MODE (LocalStorage sécurisé)
-    if (user.isGuest) {
-      try {
-        const localNotesStr = localStorage.getItem('erza_notes');
-        let localNotes = [];
-        if (localNotesStr) {
-           try {
-             const parsed = JSON.parse(localNotesStr);
-             if (Array.isArray(parsed)) localNotes = parsed;
-           } catch(e){}
-        }
-        
-        if (localNotes.length === 0) {
-           localNotes = initialNotes;
-           localStorage.setItem('erza_notes', JSON.stringify(localNotes));
-        }
-        
-        setNotes(localNotes);
-        if (localNotes.length > 0) setActiveNoteId(localNotes[0].id);
+    localStorage.setItem('erza_notes', JSON.stringify(notes));
+  }, [notes]);
 
-        const localSettingsStr = localStorage.getItem('erza_settings');
-        if (localSettingsStr) {
-           try {
-             const localSettings = JSON.parse(localSettingsStr);
-             if (localSettings && typeof localSettings === 'object') {
-               if (Array.isArray(localSettings.agenda)) setAgendaEvents(localSettings.agenda);
-               if (localSettings.appSettings) setAppSettings(prev => ({...prev, ...localSettings.appSettings}));
-             }
-           } catch(e){}
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      setIsInitializing(false);
-      return;
-    }
-
-    // CLOUD MODE (Firebase)
-    if (!db) return;
-    const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
-    
-    const unsubscribeNotes = notesRef.onSnapshot(
-      (snapshot) => {
-        const notesData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          if (!data.plainText && data.plainText !== '') {
-            if (data.type === 'mindmap') {
-               try { data.plainText = JSON.parse(data.content).map(n => n.text).join(' '); } catch(e) { data.plainText = ''; }
-            } else {
-               data.plainText = stripHtml(data.content || '');
-            }
-          }
-          return { id: doc.id, ...data };
-        });
-
-        if (notesData.length === 0 && isInitializing) {
-          initialNotes.forEach(async (note) => {
-            await notesRef.doc(note.id).set(note);
-          });
-        } else {
-          notesData.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
-          setNotes(notesData);
-          if (isInitializing && notesData.length > 0) setActiveNoteId(notesData[0].id);
-        }
-        setIsInitializing(false);
-      }, () => setSyncStatus('error')
-    );
-
-    const settingsRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data');
-    const unsubscribeSettings = settingsRef.onSnapshot(
-      (docSnap) => { 
-        if (docSnap.exists) {
-          const data = docSnap.data();
-          if (data.agenda) setAgendaEvents(Array.isArray(data.agenda) ? data.agenda : []);
-          if (data.appSettings) setAppSettings(prev => ({...prev, ...data.appSettings}));
-        }
-      }
-    );
-
-    const initTimeout = setTimeout(() => setIsInitializing(false), 5000); return () => { unsubscribeNotes(); unsubscribeSettings(); clearTimeout(initTimeout); }
-  }, [user]);
-
-  // SAVES (NOTES)
   useEffect(() => {
-    if (!user || syncStatus !== 'saving' || ['agenda', 'graph', 'trash', 'settings'].includes(viewMode)) return;
-    const activeNote = notes.find(n => n.id === activeNoteId);
-    if (!activeNote) return;
-
-    const timeoutId = setTimeout(async () => {
-      if (user.isGuest) {
-         localStorage.setItem('erza_notes', JSON.stringify(notes));
-         setSyncStatus('synced');
-      } else {
-         if(!db) return;
-         try { 
-           await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(activeNote.id).set(activeNote);
-           setSyncStatus('synced'); 
-         } catch (error) {}
-      }
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [notes, activeNoteId, user, syncStatus, viewMode]);
-
-  // SAVES (SETTINGS & AGENDA)
-  useEffect(() => {
-    if (!user || syncStatus !== 'saving') return;
-    
-    const timeoutId = setTimeout(async () => {
-      if (user.isGuest) {
-         localStorage.setItem('erza_settings', JSON.stringify({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }));
-         setSyncStatus('synced');
-      } else {
-         if(!db) return;
-         try { 
-           await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }, { merge: true });
-           setSyncStatus('synced'); 
-         } catch (error) {}
-      }
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [agendaEvents, appSettings, user, syncStatus]);
+    localStorage.setItem('erza_settings', JSON.stringify({ agenda: agendaEvents, appSettings }));
+  }, [agendaEvents, appSettings]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
   const isNoteLocked = activeNote && activeNote.isLocked && !unlockedNotes.has(activeNote.id);
@@ -1232,17 +1049,16 @@ function MainApp({ user, onLogout }) {
       title: customTitle || (type === 'note' ? 'Nouvelle Note' : 'Nouvelle Carte'),
       type: type,
       folder: customFolder,
-      content: customContent || (type === 'note' ? '<p><br></p>' : JSON.stringify([{id:'root', parentId: null, text:''}])),
+      content: customContent || (type === 'note' ? '<h1>Nouvelle Note</h1><p><br></p>' : JSON.stringify([{id:'root', parentId: null, text:''}])),
       plainText: type === 'note' ? 'Nouvelle Note' : '',
       isLocked: false,
       lockPassword: '',
       isDeleted: false,
       lastModified: Date.now()
     };
-    setNotes([newDoc, ...notes]);
+    setNotes(prev => [newDoc, ...prev]);
     setActiveNoteId(newDoc.id);
     setViewMode(type === 'mindmap' ? 'mindmap' : 'editor');
-    setSyncStatus('saving');
     setExpandedFolders(prev => ({...prev, [customFolder]: true}));
     if (window.innerWidth < 768) setLeftSidebarOpen(false);
   };
@@ -1262,9 +1078,10 @@ function MainApp({ user, onLogout }) {
     if (window.innerWidth < 768) setLeftSidebarOpen(false);
   };
 
-  const updateActiveNote = useCallback((updates) => {
+  // CORRECTIF BUG "UNDELETE" : On ne met à jour la note que si elle n'est pas dans la corbeille
+  const updateNoteById = useCallback((id, updates) => {
     setNotes(prevNotes => prevNotes.map(note => {
-      if (note.id === activeNoteId) {
+      if (note.id === id && !note.isDeleted) {
         const updatedNote = { ...note, ...updates, lastModified: Date.now() };
         if (updates.content !== undefined && updates.plainText === undefined) {
            if (note.type !== 'mindmap') {
@@ -1275,32 +1092,20 @@ function MainApp({ user, onLogout }) {
       }
       return note;
     }));
-    setSyncStatus('saving');
-  }, [activeNoteId]);
+  }, []);
 
   const deleteNote = (id) => {
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
-    setSyncStatus('saving');
     if (activeNoteId === id) setActiveNoteId(null);
   };
   
   const restoreNote = (id) => {
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: false, lastModified: Date.now() } : note));
-    setSyncStatus('saving');
   };
 
-  const permanentDeleteNote = async (id) => {
-    const updatedNotes = notes.filter(n => n.id !== id);
-    setNotes(updatedNotes);
+  const permanentDeleteNote = (id) => {
+    setNotes(prevNotes => prevNotes.filter(n => n.id !== id));
     if (activeNoteId === id) setActiveNoteId(null);
-    
-    if (user.isGuest) {
-       localStorage.setItem('erza_notes', JSON.stringify(updatedNotes));
-    } else if (db) { 
-        try { 
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
-        } catch (e) {} 
-    }
   };
 
   const navigateToLink = (titleQuery) => {
@@ -1322,7 +1127,7 @@ function MainApp({ user, onLogout }) {
 
     if (activeNote.isLocked) {
       if (lockPasswordInput === activeNote.lockPassword) {
-        updateActiveNote({ isLocked: false, lockPassword: '' });
+        updateNoteById(activeNote.id, { isLocked: false, lockPassword: '' });
         setLockPasswordInput('');
         setShowLockConfig(false);
       } else {
@@ -1330,7 +1135,7 @@ function MainApp({ user, onLogout }) {
       }
     } else {
       if (lockPasswordInput.length > 0) {
-        updateActiveNote({ isLocked: true, lockPassword: lockPasswordInput });
+        updateNoteById(activeNote.id, { isLocked: true, lockPassword: lockPasswordInput });
         setLockPasswordInput('');
         setShowLockConfig(false);
       }
@@ -1390,8 +1195,6 @@ function MainApp({ user, onLogout }) {
     });
     return { explicitBacklinks: explicit, implicitBacklinks: implicit };
   }, [notes, activeNote, viewMode, unlockedNotes]);
-
-  if (isInitializing) return html`<div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><${RefreshCw} className="animate-spin" size=${48} /></div>`;
 
   return html`
     <div className=${`flex h-screen w-full bg-slate-950 text-slate-300 overflow-hidden selection:bg-teal-500/30 ${appSettings.fontFamily}`}>
@@ -1536,15 +1339,12 @@ function MainApp({ user, onLogout }) {
         <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
            <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
-                <${User} size=${16} />
+                <${UserIcon} size=${16} />
               </div>
               <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
-                ${user?.email || "Invité (Local)"}
+                Mode Local
               </div>
            </div>
-           <button onClick=${onLogout} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
-             <${LogOut} size=${16}/>
-           </button>
         </div>
       </div>
 
@@ -1576,7 +1376,7 @@ function MainApp({ user, onLogout }) {
                    <${FileText} size=${16} className="text-teal-500 shrink-0" />
                 `}
                 ${['mindmap', 'editor'].includes(viewMode) && (!activeNote.isLocked || unlockedNotes.has(activeNote.id)) ? html`
-                  <input type="text" value=${activeNote.title || ''} onChange=${(e) => updateActiveNote({ title: e.target.value })} className="bg-transparent outline-none border-b border-transparent hover:border-slate-600 focus:border-teal-500 px-1 w-full text-center text-base md:text-lg font-serif font-bold truncate" placeholder="Titre..." />
+                  <input type="text" value=${activeNote.title || ''} onChange=${(e) => updateNoteById(activeNote.id, { title: e.target.value })} className="bg-transparent outline-none border-b border-transparent hover:border-slate-600 focus:border-teal-500 px-1 w-full text-center text-base md:text-lg font-serif font-bold truncate" placeholder="Titre..." />
                 ` : html`
                   <span className="text-base md:text-lg font-serif font-bold truncate">${activeNote.title || 'Sans titre'}</span>
                 `}
@@ -1624,7 +1424,7 @@ function MainApp({ user, onLogout }) {
                       <div className="space-y-3">
                         <select 
                           value=${activeNote.folder || 'Général'} 
-                          onChange=${(e) => { updateActiveNote({ folder: e.target.value }); setShowProperties(false); setExpandedFolders(p => ({...p, [e.target.value]: true})); }}
+                          onChange=${(e) => { updateNoteById(activeNote.id, { folder: e.target.value }); setShowProperties(false); setExpandedFolders(p => ({...p, [e.target.value]: true})); }}
                           className="w-full bg-slate-950 text-sm text-white rounded-xl p-3 border border-slate-800 outline-none focus:border-teal-500"
                         >
                           ${allFolderNames.map(f => html`<option key=${f} value=${f}>${f}</option>`)}
@@ -1632,13 +1432,12 @@ function MainApp({ user, onLogout }) {
                         <div className="flex gap-2">
                            <input 
                              type="text" 
-                             id="new-folder-input"
                              placeholder="Nouveau..." 
                              className="w-full bg-slate-950 text-sm text-white rounded-xl p-2 border border-slate-800 outline-none focus:border-teal-500"
                              onKeyDown=${(e) => {
                                if (e.key === 'Enter' && e.target.value.trim()) {
                                  const val = e.target.value.trim();
-                                 updateActiveNote({ folder: val });
+                                 updateNoteById(activeNote.id, { folder: val });
                                  setExpandedFolders(p => ({...p, [val]: true}));
                                  setShowProperties(false);
                                }
@@ -1663,16 +1462,25 @@ function MainApp({ user, onLogout }) {
 
         <div className="flex-1 flex overflow-hidden relative">
           ${viewMode === 'settings' ? html`
-             <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-950 text-slate-400 font-sans">
-                <div className="bg-slate-900 border border-slate-800 p-10 rounded-3xl max-w-2xl w-full shadow-2xl">
+             <div className="w-full h-full flex flex-col items-center p-8 bg-slate-950 text-slate-400 font-sans overflow-y-auto">
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-2xl w-full shadow-2xl">
                   <h2 className="text-2xl font-serif text-white font-bold mb-6 border-b border-slate-800 pb-4">Paramètres Erza Spark</h2>
                   
                   <div className="space-y-8">
                     <div>
-                      <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Typographie de l'éditeur</h3>
+                      <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Thème de l'Éditeur de notes</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onClick=${() => { setAppSettings(p => ({...p, theme: 'dark'})); }} className=${`py-3 px-4 rounded-xl border transition-all flex justify-center items-center gap-2 ${appSettings.theme !== 'light' ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}><${Moon} size=${18} /> Sombre</button>
+                        <button onClick=${() => { setAppSettings(p => ({...p, theme: 'light'})); }} className=${`py-3 px-4 rounded-xl border transition-all flex justify-center items-center gap-2 ${appSettings.theme === 'light' ? 'bg-amber-500/20 border-amber-500 text-amber-500' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}><${Sun} size=${18} /> Clair</button>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">Le mode clair modifie uniquement l'arrière-plan de vos notes pour un confort de lecture type "papier".</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Typographie</h3>
                       <div className="grid grid-cols-3 gap-3">
                         ${[{c:'font-sans', l:'Sans Serif'}, {c:'font-serif', l:'Serif'}, {c:'font-mono', l:'Mono'}].map(f => html`
-                          <button key=${f.c} onClick=${() => { setAppSettings(p => ({...p, fontFamily: f.c})); setSyncStatus('saving'); }} className=${`py-3 px-4 rounded-xl border transition-all ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>${f.l}</button>
+                          <button key=${f.c} onClick=${() => { setAppSettings(p => ({...p, fontFamily: f.c})); }} className=${`py-3 px-4 rounded-xl border transition-all ${appSettings.fontFamily === f.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>${f.l}</button>
                         `)}
                       </div>
                     </div>
@@ -1680,19 +1488,19 @@ function MainApp({ user, onLogout }) {
                       <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Espacement des lignes</h3>
                       <div className="grid grid-cols-3 gap-3">
                         ${[{c:'leading-snug', l:'Serré'}, {c:'leading-relaxed', l:'Normal'}, {c:'leading-loose', l:'Aéré'}].map(l => html`
-                          <button key=${l.c} onClick=${() => { setAppSettings(p => ({...p, lineSpacing: l.c})); setSyncStatus('saving'); }} className=${`py-3 px-4 rounded-xl border transition-all ${appSettings.lineSpacing === l.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>${l.l}</button>
+                          <button key=${l.c} onClick=${() => { setAppSettings(p => ({...p, lineSpacing: l.c})); }} className=${`py-3 px-4 rounded-xl border transition-all ${appSettings.lineSpacing === l.c ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}>${l.l}</button>
                         `)}
                       </div>
                     </div>
                     <div>
                        <h3 className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-3">Zone de Danger</h3>
-                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles et n'affectent que le compte <b>${user?.email || 'Local'}</b>.</p>
+                       <p className="text-xs text-slate-500 mb-3">Vider la corbeille supprimera définitivement vos notes locales.</p>
                        <button onClick=${() => {
                          if(window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT toutes les notes de la corbeille ?")) {
                            const trash = notes.filter(n => n.isDeleted);
                            trash.forEach(t => permanentDeleteNote(t.id));
                          }
-                       }} className="bg-slate-950 border border-rose-500/50 text-rose-400 hover:bg-rose-500 hover:text-white px-5 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2">
+                       }} className="bg-slate-950 border border-rose-500/50 text-rose-400 hover:bg-rose-500 hover:text-white px-5 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2 w-max">
                          <${Trash2} size=${16} /> Vider la corbeille
                        </button>
                     </div>
@@ -1706,7 +1514,7 @@ function MainApp({ user, onLogout }) {
                 <p className="text-sm mb-8">Ouvrez le menu latéral gauche pour restaurer ou supprimer définitivement vos notes.</p>
              </div>
           ` : viewMode === 'graph' ? html`
-             <${GraphView} notes=${notes} unlockedNotes=${unlockedNotes} onNodeClick=${(n) => { 
+             <${GraphView} notes=${notes} unlockedNotes=${unlockedNotes} onExit=${() => setViewMode('editor')} onNodeClick=${(n) => { 
                 if (n.isLocked && !unlockedNotes.has(n.id)) {
                   setActiveNoteId(n.id);
                   setViewMode('editor');
@@ -1716,19 +1524,19 @@ function MainApp({ user, onLogout }) {
                 }
              }} />
           ` : viewMode === 'agenda' ? html`
-            <${SimpleAgenda} agendaEvents=${agendaEvents} updateAgendaEvents=${(data) => { setAgendaEvents(data); setSyncStatus('saving'); }} />
+            <${SimpleAgenda} agendaEvents=${agendaEvents} updateAgendaEvents=${setAgendaEvents} />
           ` : isNoteLocked ? html`
-            <${PasswordPrompt} key=${activeNote.id} note=${activeNote} userEmail=${user?.email} onUnlock=${(id, resetPwd = false) => {
+            <${PasswordPrompt} key=${activeNote.id} note=${activeNote} userEmail="Local" onUnlock=${(id, resetPwd = false) => {
               const newSet = new Set(unlockedNotes);
               newSet.add(id);
               setUnlockedNotes(newSet);
-              if (resetPwd) updateActiveNote({ isLocked: false, lockPassword: '' });
+              if (resetPwd) updateNoteById(id, { isLocked: false, lockPassword: '' });
             }} />
           ` : viewMode === 'mindmap' && activeNote ? html`
-            <${MindMapCanvas} note=${activeNote} updateNote=${updateActiveNote} navigateToLink=${navigateToLink} searchQuery=${searchQuery} />
+            <${MindMapCanvas} note=${activeNote} updateNote=${updateNoteById} navigateToLink=${navigateToLink} searchQuery=${searchQuery} onExit=${() => setViewMode('editor')} />
           ` : activeNote ? html`
             <div className="flex w-full h-full">
-              <${RichTextEditor} key=${activeNote.id} note=${activeNote} updateNote=${updateActiveNote} appSettings=${appSettings} navigateToLink=${navigateToLink} searchQuery=${searchQuery} />
+              <${RichTextEditor} key=${activeNote.id} note=${activeNote} updateNote=${updateNoteById} appSettings=${appSettings} navigateToLink=${navigateToLink} searchQuery=${searchQuery} />
               
               ${rightSidebarOpen ? html`
                 <div className="absolute lg:relative right-0 top-0 bottom-0 w-72 h-full bg-slate-900 border-l border-slate-800 flex flex-col z-30 shrink-0 shadow-2xl lg:shadow-none font-sans">
@@ -1780,6 +1588,7 @@ function MainApp({ user, onLogout }) {
                         </div>
                       `}
                     </div>
+
                   </div>
                 </div>
               ` : null}
@@ -1804,45 +1613,8 @@ function MainApp({ user, onLogout }) {
   `;
 }
 
-// --- APP WRAPPER (MANAGES AUTH STATE) ---
-const AppWrapper = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!auth) { setLoading(false); return; }     const timeout = setTimeout(() => setLoading(false), 1500);
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => { unsubscribe(); clearTimeout(timeout); };
-  }, []);
-
-  const handleGuestLogin = () => {
-    setUser({ uid: 'local-guest', email: 'Invité (Local)', isGuest: true });
-  };
-
-  const handleLogout = () => {
-    if (user?.isGuest) {
-      setUser(null);
-    } else if (auth) {
-      auth.signOut();
-    }
-  };
-
-  if (loading) {
-    return html`<div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><${RefreshCw} className="animate-spin" size=${48} /></div>`;
-  }
-
-  if (!user) {
-    return html`<${AuthScreen} onGuestLogin=${handleGuestLogin} />`;
-  }
-
-  return html`<${MainApp} user=${user} onLogout=${handleLogout} />`;
-};
-
 // --- SECURE ERROR BOUNDARY ---
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends window.React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   resetApp = () => { this.setState({ hasError: false, error: null }); }
@@ -1862,7 +1634,7 @@ class ErrorBoundary extends React.Component {
         </div>
       `;
     }
-    return html`<${AppWrapper} />`;
+    return html`<${MainApp} />`;
   }
 }
 
