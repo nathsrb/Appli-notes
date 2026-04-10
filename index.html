@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <!-- Verrouillage strict du viewport pour empêcher les zooms sauvages sur iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>Erza Spark</title>
     
@@ -10,21 +9,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="theme-color" content="#020617">
 
-    <!-- CHARGEMENT REACT & HTM (AUCUN BABEL, JAVASCRIPT PUR !) -->
+    <!-- CHARGEMENT REACT & HTM (JAVASCRIPT PUR POUR SAFARI iOS) -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.js"></script>
     
     <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS Uniquement) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
+    
     <!-- Firebase Officiel (Version Compatibilité Globale) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-      /* Bloque le rebond de défilement sur iOS qui fait fuir la barre du haut */
       body, html { 
         background-color: #020617; 
         overscroll-behavior-y: none; 
@@ -57,7 +55,7 @@
       .ezra-editor strong, .ezra-editor b { color: white; font-weight: 700; }
       .ezra-editor:empty:before { content: attr(placeholder); color: #475569; pointer-events: none; display: block; }
 
-      /* TYPOGRAPHIE THEME CLAIR (NOUVEAU) */
+      /* TYPOGRAPHIE THEME CLAIR (NOTES SEULEMENT) */
       .ezra-editor.light-mode { color: #1e293b; }
       .ezra-editor.light-mode h1 { color: #000000; }
       .ezra-editor.light-mode h2 { color: #0f172a; border-bottom-color: #cbd5e1; }
@@ -70,11 +68,9 @@
 <body>
     <div id="root"></div>
 
-    <!-- SCRIPT CLASSIQUE (AUCUN TYPE MODULE NI BABEL) -->
     <script type="text/javascript">
 const { useState, useEffect, useRef, useMemo, useCallback } = window.React;
 const { createRoot } = window.ReactDOM;
-// Initialisation de HTM pour remplacer le JSX
 const html = window.htm.bind(window.React.createElement);
 
 // --- INITIALISATION DES ICÔNES ---
@@ -94,8 +90,6 @@ const X = createIcon('ph-x');
 const Folder = createIcon('ph-folder');
 const FolderOpen = createIcon('ph-folder-open');
 const Save = createIcon('ph-floppy-disk');
-const Cloud = createIcon('ph-cloud');
-const CloudOff = createIcon('ph-cloud-slash');
 const SidebarClose = createIcon('ph-sidebar-simple');
 const SidebarOpen = createIcon('ph-list');
 const ChevronRight = createIcon('ph-caret-right');
@@ -127,13 +121,14 @@ const Redo = createIcon('ph-arrow-u-up-right');
 const Lock = createIcon('ph-lock-key');
 const Unlock = createIcon('ph-lock-key-open');
 const Calendar = createIcon('ph-calendar');
-const IconUser = createIcon('ph-user'); // Renommé pour éviter tout conflit avec "user"
+const IconUser = createIcon('ph-user'); 
 const LogOut = createIcon('ph-sign-out');
 const Mail = createIcon('ph-envelope-simple');
 const RotateCcw = createIcon('ph-clock-counter-clockwise');
 const Sun = createIcon('ph-sun');
 const Moon = createIcon('ph-moon');
-const AlertTriangle = createIcon('ph-warning');
+const Lightbulb = createIcon('ph-lightbulb');
+const Rocket = createIcon('ph-rocket'); // Nouvelle icône pour l'accroche vendeuse
 
 // --- UTILS & ALGORITHMS ---
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -229,7 +224,7 @@ const firebaseConfig = {
   appId: "1:379462215469:web:2c12802420c76b644d15a4"
 };
 
-// Initialisation de Firebase
+// Initialisation sans try/catch bloquant
 if (window.firebase) {
   app = window.firebase.initializeApp(firebaseConfig);
   auth = window.firebase.auth();
@@ -340,7 +335,7 @@ const AuthScreen = ({ onGuestLogin }) => {
             <div className="flex-grow border-t border-slate-800"></div>
           </div>
 
-          <button onClick=${onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700">
+          <button onClick=${onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700 shadow-sm">
             <${Save} size=${18} /> Continuer sans compte (Local)
           </button>
           <p className="text-[10px] text-slate-500 text-center px-4">En mode local, vos notes sont sauvegardées uniquement dans la mémoire de ce téléphone.</p>
@@ -350,7 +345,8 @@ const AuthScreen = ({ onGuestLogin }) => {
   `;
 };
 
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark fonctionne 100% en mode local. Aucune donnée n\'est envoyée sur internet.</p><h2>🔒 Nouveautés Actives :</h2><ul><li><strong>Barre Fixée (Safari Fix) :</strong> L\'application est clouée à votre écran, la barre du haut ne fuira plus !</li><li><strong>Cartes Mentales Modulaires :</strong> Vous pouvez désormais plier et déplier les branches de vos cartes mentales via les petits boutons + et -.</li><li><strong>Thème Clair :</strong> Allez dans les paramètres pour illuminer votre zone de texte.</li><li><strong>Zéro Firebase :</strong> Fini les erreurs de connexion. Ouvrez l\'app et travaillez immédiatement.</li></ul>';
+// --- INITIAL MOCK DATA ---
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est officiellement opérationnel et stable.</p><h2>🔒 Nouveautés Actives :</h2><ul><li><strong>Barre Fixée (Safari Fix) :</strong> L\'application est clouée à votre écran, la barre du haut ne fuira plus !</li><li><strong>Cartes Mentales Modulaires :</strong> Vous pouvez désormais plier et déplier les branches de vos cartes mentales via les petits boutons + et -.</li><li><strong>Thème Clair :</strong> Cliquez sur Paramètres (la roue crantée) pour illuminer l\'éditeur.</li><li><strong>Zéro Crash :</strong> L\'application fonctionne 100% en local et sans erreur d\'icônes.</li></ul>';
 
 const initialNotes = [
   {
@@ -376,6 +372,7 @@ const MATRIX_COLORS = [
   { class: 'bg-slate-500/10 border-slate-500/30 text-slate-300', bg: 'bg-slate-500', action: 'Éliminer', sub: 'Ni Urg. Ni Imp.', icon: '⚪' }
 ];
 
+// --- AGENDA COMPONENT ---
 const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   const safeEvents = Array.isArray(agendaEvents) ? agendaEvents : [];
 
@@ -445,6 +442,7 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   `;
 };
 
+// --- RECUPERATION MOT DE PASSE (LOCAL) ---
 const PasswordPrompt = ({ note, onUnlock }) => {
   const [pwd, setPwd] = useState('');
   const [err, setErr] = useState(false);
@@ -469,7 +467,7 @@ const PasswordPrompt = ({ note, onUnlock }) => {
   };
 
   const startRecovery = () => {
-    alert("Un code maître de secours (0000) a été défini pour éviter la perte de vos données locales.");
+    alert("Mode local : Un code maître d'urgence a été défini pour éviter la perte de données.\n\nLe code est : 0000");
     setRecoveryMode(true);
   };
 
@@ -522,6 +520,7 @@ const PasswordPrompt = ({ note, onUnlock }) => {
   `;
 }
 
+// --- GLOBAL GRAPH VIEW ---
 const GraphView = ({ notes, onNodeClick, unlockedNotes, onExit }) => {
   const canvasRef = useRef(null);
   
@@ -674,13 +673,16 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes, onExit }) => {
   }, [nodes, edges, onNodeClick, unlockedNotes]);
 
   return html`
-    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref=${containerRef} onWheel=${handleWheel} onPointerDown=${handlePointerDown} onPointerMove=${handlePointerMove} onPointerUp=${() => {dragState.current.type=null}} onPointerLeave=${() => {dragState.current.type=null}} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove} onTouchEnd=${() => {dragState.current.type=null}} onTouchCancel=${() => {dragState.current.type=null}}>
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style=${{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }}></div>
+    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref=${containerRef}>
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style=${{ backgroundSize: `60px 60px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)` }}></div>
+      
+      <div className="absolute top-6 left-6 text-teal-400 font-medium z-10 flex flex-col gap-2 bg-slate-900/90 px-4 py-3 rounded-2xl border border-slate-800 backdrop-blur shadow-2xl text-sm pointer-events-none">
+        <div className="flex items-center gap-2 mb-1 text-white font-bold"><${Network} size=${16} /> Graphe Cérébral</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-teal-500"></div> Mentions Directes [[ ]]</div>
+        <div className="flex items-center gap-2 text-slate-400"><div className="w-6 h-[2px] bg-purple-500"></div> Mentions Implicites</div>
+      </div>
       
       <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
-        <button onClick=${() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomIn} size=${24}/></button>
-        <button onClick=${() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomOut} size=${24}/></button>
-        <button onClick=${() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><${Target} size=${24}/></button>
         <button onClick=${onExit} className="bg-rose-600 p-3 rounded-full shadow-lg border border-rose-500 text-white hover:bg-rose-500 transition-all mt-4"><${X} size=${24}/></button>
       </div>
 
@@ -689,6 +691,7 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes, onExit }) => {
   `;
 };
 
+// --- MIND MAP ENGINE (AVEC FOLD/UNFOLD ET ZOOM) ---
 const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }) => {
   const containerRef = useRef(null);
   const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
@@ -892,14 +895,13 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }
   };
 
   return html`
-    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none" style=${{touchAction: 'none'}} ref=${containerRef} onWheel=${handleWheel} onPointerDown=${handlePointerDown} onPointerMove=${handlePointerMove} onPointerUp=${() => {dragState.current.type=null}} onPointerLeave=${() => {dragState.current.type=null}} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove} onTouchEnd=${() => {dragState.current.type=null}} onTouchCancel=${() => {dragState.current.type=null}}>
+    <div className="w-full h-full relative overflow-hidden bg-slate-950 select-none touch-none" ref=${containerRef} onWheel=${handleWheel} onPointerDown=${handlePointerDown} onPointerMove=${handlePointerMove} onPointerUp=${() => {dragState.current.type=null}} onPointerLeave=${() => {dragState.current.type=null}} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove} onTouchEnd=${() => {dragState.current.type=null}} onTouchCancel=${() => {dragState.current.type=null}}>
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style=${{ backgroundSize: `${60 * camera.zoom}px ${60 * camera.zoom}px`, backgroundImage: `radial-gradient(circle, #14b8a6 2px, transparent 2px)`, backgroundPosition: `${camera.x}px ${camera.y}px` }}></div>
       
       <div className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
         <button onClick=${() => setCamera(c => ({...c, zoom: Math.min(3, c.zoom + 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomIn} size=${24}/></button>
         <button onClick=${() => setCamera(c => ({...c, zoom: Math.max(0.2, c.zoom - 0.2)}))} className="bg-slate-800 p-3 rounded-full shadow-lg border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition-all"><${ZoomOut} size=${24}/></button>
         <button onClick=${() => setCamera({x: containerRef.current?.clientWidth/4 || 100, y: containerRef.current?.clientHeight/2 || 200, zoom: 1})} className="bg-teal-600 p-3 rounded-full shadow-lg shadow-teal-500/30 border border-teal-500 text-white hover:bg-teal-500 transition-all"><${Target} size=${24}/></button>
-        <button onClick=${onExit} className="bg-rose-600 p-3 rounded-full shadow-lg border border-rose-500 text-white hover:bg-rose-500 transition-all mt-4"><${X} size=${24}/></button>
       </div>
 
       ${selection && !editingNodeId ? html`
@@ -965,7 +967,7 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }
   `;
 };
 
-// --- WYSIWYG EDITOR COMPONENT ---
+// --- WYSIWYG EDITOR COMPONENT (AVEC THEME CLAIR) ---
 const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQuery }) => {
   const editorRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -1184,12 +1186,13 @@ function MainApp({ user, onLogout }) {
   const [activeNoteId, setActiveNoteId] = useState(notes.length > 0 ? notes[0].id : null);
   const [viewMode, setViewMode] = useState('editor'); 
   const [searchQuery, setSearchQuery] = useState('');
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); 
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(window.innerWidth > 1024); 
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState('files'); 
-  const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
   const [syncStatus, setSyncStatus] = useState('synced');
   const [isInitializing, setIsInitializing] = useState(true);
+
+  const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
 
   const propertiesRef = useRef(null);
   const lockConfigRef = useRef(null);
@@ -1206,7 +1209,7 @@ function MainApp({ user, onLogout }) {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // DATA SYNC ON LOAD
+  // CLOUD SYNC & LOCAL SYNC
   useEffect(() => {
     if (!user) return;
     
@@ -1516,9 +1519,19 @@ function MainApp({ user, onLogout }) {
             <span className="tracking-wide text-xl font-serif">Erza Spark</span>
           </div>
           <div className="flex gap-2">
-            <button onClick=${() => {setSidebarTab('settings'); setViewMode('settings'); if(window.innerWidth < 1024) setLeftSidebarOpen(false);}} className=${`p-2 transition-colors rounded-xl border ${sidebarTab === 'settings' ? 'bg-teal-500/20 text-teal-400 border-teal-500/50' : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'}`}><${Settings} size=${18} /></button>
             <button className="lg:hidden p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl" onClick=${() => setLeftSidebarOpen(false)}><${X} size=${20} /></button>
           </div>
+        </div>
+
+        <!-- ENCART VENDEUR -->
+        <div className="px-4 pt-4 mb-2 shrink-0">
+           <a href="https://nathansrb7.systeme.io/9123fdf1" target="_blank" rel="noopener noreferrer" className="w-full bg-gradient-to-r from-teal-900/40 to-emerald-900/40 border border-teal-500/30 p-3 rounded-xl flex items-center gap-3 text-teal-100 hover:from-teal-800/50 hover:to-emerald-800/50 hover:border-teal-400 transition-all group shadow-lg shadow-teal-900/20">
+             <div className="bg-teal-500/20 p-2 rounded-lg group-hover:bg-teal-400/30 transition-colors text-teal-400"><${Rocket} size=${18} /></div>
+             <div className="text-left flex-1">
+               <div className="text-[12px] font-bold font-sans uppercase tracking-wide text-teal-300">Formation IA & Pro</div>
+               <div className="text-[10px] opacity-80 mt-0.5 text-teal-100">Gagnez 10h/semaine avec l'IA</div>
+             </div>
+           </a>
         </div>
 
         <div className="p-4 shrink-0 border-b border-slate-800/50 font-sans">
@@ -1643,18 +1656,24 @@ function MainApp({ user, onLogout }) {
           ` : null}
         </div>
 
+        <!-- PROFILS ET PARAMETRES BOTTOM -->
         <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-900/50 shrink-0">
            <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
                 <${IconUser} size=${16} />
               </div>
-              <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
+              <div className="text-[11px] truncate text-slate-400 font-mono max-w-[120px]">
                 ${user?.email || "Invité (Local)"}
               </div>
            </div>
-           <button onClick=${onLogout} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
-             <${LogOut} size=${16}/>
-           </button>
+           <div className="flex gap-1.5">
+             <button onClick=${() => {setSidebarTab('settings'); setViewMode('settings'); if(window.innerWidth < 1024) setLeftSidebarOpen(false);}} className="text-slate-500 hover:text-teal-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Paramètres">
+               <${Settings} size=${16}/>
+             </button>
+             <button onClick=${onLogout} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
+               <${LogOut} size=${16}/>
+             </button>
+           </div>
         </div>
       </div>
 
@@ -1695,6 +1714,7 @@ function MainApp({ user, onLogout }) {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
+            <button onClick=${() => {setSidebarTab('settings'); setViewMode('settings');}} className=${`p-1.5 sm:p-2 rounded-xl transition-all hidden md:block ${viewMode === 'settings' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Paramètres"><${Settings} size=${18} /></button>
             <button onClick=${() => setViewMode(viewMode === 'graph' ? 'editor' : 'graph')} className=${`p-1.5 sm:p-2 rounded-xl transition-all ${viewMode === 'graph' ? 'bg-teal-500/20 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} title="Graphe Cérébral"><${Network} size=${18} /></button>
 
             ${activeNote && !['agenda', 'graph', 'trash', 'settings'].includes(viewMode) ? html`
@@ -1770,18 +1790,19 @@ function MainApp({ user, onLogout }) {
           </div>
         </div>
 
+        <!-- WORKSPACE CONTENT -->
         <div className="flex-1 flex overflow-hidden relative">
           ${viewMode === 'settings' ? html`
              <div className="w-full h-full flex flex-col items-center p-8 bg-slate-950 text-slate-400 font-sans overflow-y-auto">
                 <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-2xl w-full shadow-2xl">
-                  <h2 className="text-2xl font-serif text-white font-bold mb-6 border-b border-slate-800 pb-4">Paramètres Erza Spark</h2>
+                  <h2 className="text-2xl font-serif text-white font-bold mb-6 border-b border-slate-800 pb-4 flex items-center gap-3"><${Settings} size=${28} className="text-teal-500" /> Paramètres</h2>
                   
                   <div className="space-y-8">
                     <div>
                       <h3 className="text-sm font-bold text-teal-500 uppercase tracking-widest mb-3">Thème de l'Éditeur de notes</h3>
                       <div className="grid grid-cols-2 gap-3">
                         <button onClick=${() => { setAppSettings(p => ({...p, theme: 'dark'})); }} className=${`py-3 px-4 rounded-xl border transition-all flex justify-center items-center gap-2 ${appSettings.theme !== 'light' ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}><${Moon} size=${18} /> Sombre</button>
-                        <button onClick=${() => { setAppSettings(p => ({...p, theme: 'light'})); }} className=${`py-3 px-4 rounded-xl border transition-all flex justify-center items-center gap-2 ${appSettings.theme === 'light' ? 'bg-amber-500/20 border-amber-500 text-amber-500' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}><${Sun} size=${18} /> Clair</button>
+                        <button onClick=${() => { setAppSettings(p => ({...p, theme: 'light'})); }} className=${`py-3 px-4 rounded-xl border transition-all flex justify-center items-center gap-2 ${appSettings.theme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-slate-400 hover:bg-slate-800'}`}><${Sun} size=${18} /> Clair</button>
                       </div>
                       <p className="text-xs text-slate-500 mt-2">Le mode clair modifie uniquement l'arrière-plan de vos notes pour un confort de lecture type "papier".</p>
                     </div>
