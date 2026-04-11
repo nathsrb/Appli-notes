@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <!-- Verrouillage strict du viewport pour empêcher les zooms sauvages sur iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
     <title>Erza Spark</title>
     
@@ -17,9 +16,11 @@
     
     <!-- SYSTÈME D'ICÔNES INCASSABLE (CSS Uniquement) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- SUPABASE SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-      /* Bloque le rebond de défilement sur iOS qui fait fuir la barre du haut */
       body, html { 
         background-color: #020617; 
         overscroll-behavior-y: none; 
@@ -28,7 +29,6 @@
         overflow: hidden;
       }
       
-      /* --- CORRECTIF VITAL SAFARI iOS --- */
       input, textarea, select {
         font-size: 16px !important;
       }
@@ -39,7 +39,7 @@
       .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #475569; }
       ::selection { background-color: rgba(20, 184, 166, 0.3); color: white; }
       
-      /* TYPOGRAPHIE THEME SOMBRE (DÉFAUT) */
+      /* TYPOGRAPHIE THEME SOMBRE */
       .ezra-editor { padding-bottom: 200px; }
       .ezra-editor h1 { font-family: ui-serif, Georgia, serif; font-size: 2.5em; font-weight: 800; margin-top: 1em; margin-bottom: 0.5em; letter-spacing: -0.02em; color: white; }
       .ezra-editor h2 { font-family: ui-serif, Georgia, serif; font-size: 1.8em; font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.5); padding-bottom: 0.2em; }
@@ -52,7 +52,7 @@
       .ezra-editor strong, .ezra-editor b { color: white; font-weight: 700; }
       .ezra-editor:empty:before { content: attr(placeholder); color: #475569; pointer-events: none; display: block; }
 
-      /* TYPOGRAPHIE THEME CLAIR (NOTES SEULEMENT) */
+      /* TYPOGRAPHIE THEME CLAIR */
       .ezra-editor.light-mode { color: #1e293b; }
       .ezra-editor.light-mode h1 { color: #000000; }
       .ezra-editor.light-mode h2 { color: #0f172a; border-bottom-color: #cbd5e1; }
@@ -69,6 +69,19 @@
 const { useState, useEffect, useRef, useMemo, useCallback } = window.React;
 const { createRoot } = window.ReactDOM;
 const html = window.htm.bind(window.React.createElement);
+
+// --- CONFIGURATION SUPABASE ---
+// ⚠️ INSÉREZ VOS CLÉS SUPABASE ICI ⚠️
+const SUPABASE_URL = "https://xyz.supabase.co"; // Remplacez par votre vraie URL Supabase
+const SUPABASE_ANON_KEY = "VOTRE_SUPABASE_ANON_KEY_ICI"; // Remplacez par votre vraie clé
+
+// Modification: Renommé en supabaseClient pour éviter le SyntaxError avec le CDN
+let supabaseClient;
+try {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  console.warn("Supabase n'est pas correctement configuré. L'application basculera en mode local.");
+}
 
 // --- INITIALISATION DES ICÔNES ---
 const createIcon = (iconClass) => ({ size = 24, className = "", strokeWidth, ...props }) => {
@@ -87,6 +100,8 @@ const X = createIcon('ph-x');
 const Folder = createIcon('ph-folder');
 const FolderOpen = createIcon('ph-folder-open');
 const Save = createIcon('ph-floppy-disk');
+const Cloud = createIcon('ph-cloud');
+const CloudOff = createIcon('ph-cloud-slash');
 const SidebarClose = createIcon('ph-sidebar-simple');
 const SidebarOpen = createIcon('ph-list');
 const ChevronRight = createIcon('ph-caret-right');
@@ -119,6 +134,8 @@ const Lock = createIcon('ph-lock-key');
 const Unlock = createIcon('ph-lock-key-open');
 const Calendar = createIcon('ph-calendar');
 const IconUser = createIcon('ph-user'); 
+const LogOut = createIcon('ph-sign-out');
+const Mail = createIcon('ph-envelope-simple');
 const RotateCcw = createIcon('ph-clock-counter-clockwise');
 const Sun = createIcon('ph-sun');
 const Moon = createIcon('ph-moon');
@@ -205,8 +222,128 @@ function useOnClickOutside(ref, handler) {
   }, [ref, handler]);
 }
 
+// --- AUTHENTICATION SCREEN ---
+const AuthScreen = ({ onGuestLogin }) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    if (SUPABASE_URL.includes("xyz.supabase.co") || !supabaseClient) {
+       setError("⚠️ Supabase n'est pas encore configuré. Insérez vos clés dans le code ou continuez en Mode Local.");
+       setLoading(false);
+       return;
+    }
+
+    try {
+      if (isLogin) {
+        const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+      } else {
+        const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
+        else setError("Vérifiez vos emails pour valider l'inscription !");
+      }
+    } catch (err) {
+      console.error(err);
+      const msg = err && err.message ? err.message : String(err);
+      
+      if (msg.includes('Invalid login credentials')) {
+         setError("Email ou mot de passe incorrect.");
+      } else if (msg.includes('Password should be')) {
+         setError("Le mot de passe doit contenir au moins 6 caractères.");
+      } else if (msg.includes('already registered')) {
+         setError("Cet email est déjà utilisé.");
+      } else {
+         setError("Erreur : " + msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError("Veuillez saisir votre adresse email dans le champ ci-dessus.");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      setError("Un email de réinitialisation a été envoyé à " + email);
+    } catch (err) {
+      setError("Erreur lors de la réinitialisation : " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return html`
+    <div className="flex h-screen w-full bg-slate-950 items-center justify-center p-4">
+      <div className="bg-slate-900 p-8 sm:p-10 rounded-[2.5rem] border border-slate-800 shadow-2xl w-full max-w-md relative overflow-hidden flex flex-col">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-indigo-500"></div>
+        <div className="text-center mb-8">
+          <${Feather} size=${48} className="mx-auto mb-4 text-teal-500/40" />
+          <h2 className="text-3xl font-serif font-bold text-white mb-2 tracking-wide">Erza Spark</h2>
+          <p className="text-sm text-slate-400 font-medium">Votre Second Cerveau connecté.</p>
+        </div>
+
+        <form onSubmit=${handleAuth} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email</label>
+            <div className="relative">
+              <${Mail} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size=${16} />
+              <input type="email" value=${email} onChange=${(e) => setEmail(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="votre@email.com" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between items-center ml-1">
+               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mot de passe</label>
+               <button type="button" onClick=${handlePasswordReset} className="text-[10px] text-teal-500 hover:text-teal-400 underline">Mot de passe oublié ?</button>
+            </div>
+            <div className="relative">
+              <${Lock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size=${16} />
+              <input type="password" value=${password} onChange=${(e) => setPassword(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 transition-colors" placeholder="••••••••" />
+            </div>
+          </div>
+          
+          ${error ? html`<div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium text-center">${error}</div>` : null}
+
+          <button type="submit" disabled=${loading} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-teal-500/20 mt-4 flex justify-center items-center gap-2 disabled:opacity-50">
+            ${loading ? html`<${RefreshCw} className="animate-spin" size=${18} />` : (isLogin ? "Connexion (Supabase)" : "S'inscrire (Supabase)")}
+          </button>
+        </form>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <button onClick=${() => { setIsLogin(!isLogin); setError(''); }} className="text-sm text-slate-400 hover:text-teal-400 transition-colors">
+            ${isLogin ? "Nouveau ici ? Créer un compte" : "Déjà membre ? Se connecter"}
+          </button>
+          
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase font-bold tracking-wider">OU</span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button onClick=${onGuestLogin} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 border border-slate-700 shadow-sm">
+            <${Save} size=${18} /> Continuer sans compte (Local)
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 // --- DONNÉES INITIALES ---
-const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est un Second Cerveau 100% local, rapide et privé.</p><h2>⚡ Vos avantages :</h2><ul><li><strong>Autonomie Totale :</strong> Aucune base de données distante. Vos notes restent sur votre appareil.</li><li><strong>Performances Extrêmes :</strong> Application allégée, sans temps de chargement.</li><li><strong>Cartes Mentales Modulaires :</strong> Pliez et dépliez vos branches à volonté avec les boutons + et -.</li><li><strong>Thème Personnalisable :</strong> Passez au mode clair pour une lecture apaisée via les paramètres.</li></ul>';
+const initialContent = '<h1>La sécurité et productivité unifiées.</h1><p>Erza Spark est désormais connecté à <b>Supabase</b> pour des performances et une sécurité de niveau entreprise.</p><h2>🔒 Nouveautés Actives :</h2><ul><li><strong>Cloud Supabase :</strong> Stockage PostgreSQL ultrarapide et sécurisé via RLS.</li><li><strong>Barre Fixée :</strong> L\'application est clouée à l\'écran sur Safari iOS.</li><li><strong>Cartes Mentales :</strong> Modulaires avec branches rétractables (+ et -).</li></ul>';
 
 const initialNotes = [
   {
@@ -302,7 +439,7 @@ const SimpleAgenda = ({ agendaEvents, updateAgendaEvents }) => {
   `;
 };
 
-// --- RECUPERATION MOT DE PASSE (LOCAL) ---
+// --- RECUPERATION MOT DE PASSE NOTE ---
 const PasswordPrompt = ({ note, onUnlock }) => {
   const [pwd, setPwd] = useState('');
   const [err, setErr] = useState(false);
@@ -327,7 +464,7 @@ const PasswordPrompt = ({ note, onUnlock }) => {
   };
 
   const startRecovery = () => {
-    alert("Mode local : Un code maître d'urgence a été défini pour éviter la perte de données.\n\nLe code est : 0000");
+    alert("Sécurité : Un code maître d'urgence a été défini pour éviter la perte de données.\n\nLe code est : 0000");
     setRecoveryMode(true);
   };
 
@@ -549,7 +686,7 @@ const GraphView = ({ notes, onNodeClick, unlockedNotes, onExit }) => {
   `;
 };
 
-// --- MIND MAP ENGINE (AVEC FOLD/UNFOLD ET ZOOM) ---
+// --- MIND MAP ENGINE ---
 const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }) => {
   const containerRef = useRef(null);
   const [camera, setCamera] = useState({ x: 100, y: window.innerHeight / 3, zoom: 0.8 });
@@ -826,7 +963,7 @@ const MindMapCanvas = ({ note, updateNote, navigateToLink, searchQuery, onExit }
   `;
 };
 
-// --- WYSIWYG EDITOR COMPONENT (AVEC THEME CLAIR) ---
+// --- WYSIWYG EDITOR COMPONENT ---
 const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQuery }) => {
   const editorRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -1013,7 +1150,7 @@ const RichTextEditor = ({ note, updateNote, appSettings, navigateToLink, searchQ
 };
 
 // --- MAIN APP ---
-function MainApp() {
+function MainApp({ user, onLogout }) {
   const [notes, setNotes] = useState(() => {
     try {
       const localNotesStr = localStorage.getItem('erza_notes');
@@ -1048,6 +1185,8 @@ function MainApp() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(window.innerWidth > 1024); 
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState('files'); 
+  const [syncStatus, setSyncStatus] = useState('synced');
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const [expandedFolders, setExpandedFolders] = useState({ 'Général': true });
 
@@ -1066,14 +1205,107 @@ function MainApp() {
     if (window.innerWidth > 1024) { setLeftSidebarOpen(true); setRightSidebarOpen(true); }
   }, []);
 
-  // SAUVEGARDE LOCALE INSTANTANÉE (100% LOCAL)
+  // INIT FROM SUPABASE
   useEffect(() => {
-    localStorage.setItem('erza_notes', JSON.stringify(notes));
-  }, [notes]);
+    if (!user) return;
 
+    const loadData = async () => {
+      if (user.isGuest || SUPABASE_URL.includes("xyz.supabase.co") || !supabaseClient) {
+        setIsInitializing(false);
+        return;
+      }
+      
+      try {
+        const { data: notesData, error: notesError } = await supabaseClient.from('notes').select('*').eq('user_id', user.id);
+        if (notesError) throw notesError;
+
+        if (notesData && notesData.length > 0) {
+           const mappedNotes = notesData.map(n => ({
+             id: n.id,
+             title: n.title,
+             type: n.type,
+             folder: n.folder,
+             content: n.content,
+             plainText: n.plainText || n.plain_text || '',
+             isLocked: n.isLocked || false,
+             lockPassword: n.lockPassword || '',
+             isDeleted: n.isDeleted || false,
+             lastModified: n.lastModified || Date.now()
+           })).sort((a, b) => b.lastModified - a.lastModified);
+           setNotes(mappedNotes);
+           setActiveNoteId(mappedNotes.length > 0 ? mappedNotes[0].id : null);
+        } else {
+           const initialNote = { ...initialNotes[0], user_id: user.id };
+           setNotes([initialNote]);
+           setActiveNoteId(initialNote.id);
+           await supabaseClient.from('notes').insert(initialNote);
+        }
+
+        const { data: settingsData, error: settingsError } = await supabaseClient.from('user_settings').select('*').eq('user_id', user.id).single();
+        if (settingsData) {
+           if (settingsData.agenda && Array.isArray(settingsData.agenda)) setAgendaEvents(settingsData.agenda);
+           if (settingsData.appSettings) setAppSettings(prev => ({...prev, ...settingsData.appSettings}));
+        }
+      } catch (err) {
+        console.error("Erreur de chargement Supabase:", err);
+        setSyncStatus('error');
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    
+    loadData();
+  }, [user]);
+
+  // SAVES TO SUPABASE (NOTES)
   useEffect(() => {
-    localStorage.setItem('erza_settings', JSON.stringify({ agenda: agendaEvents, appSettings }));
-  }, [agendaEvents, appSettings]);
+    if (!user || syncStatus !== 'saving' || ['agenda', 'graph', 'trash', 'settings'].includes(viewMode)) return;
+    const activeNote = notes.find(n => n.id === activeNoteId);
+    if (!activeNote) return;
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        if (user.isGuest || SUPABASE_URL.includes("xyz.supabase.co") || !supabaseClient) {
+           localStorage.setItem('erza_notes', JSON.stringify(notes));
+           setSyncStatus('synced');
+        } else {
+           const noteToSave = { ...activeNote, user_id: user.id };
+           const { error } = await supabaseClient.from('notes').upsert(noteToSave);
+           if (error) throw error;
+           setSyncStatus('synced');
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+      }
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [notes, activeNoteId, user, syncStatus, viewMode]);
+
+  // SAVES TO SUPABASE (SETTINGS & AGENDA)
+  useEffect(() => {
+    if (!user || syncStatus !== 'saving') return;
+    
+    const timeoutId = setTimeout(async () => {
+      try {
+        if (user.isGuest || SUPABASE_URL.includes("xyz.supabase.co") || !supabaseClient) {
+           localStorage.setItem('erza_settings', JSON.stringify({ agenda: agendaEvents, appSettings, lastUpdated: Date.now() }));
+           setSyncStatus('synced');
+        } else {
+           const { error } = await supabaseClient.from('user_settings').upsert({
+             user_id: user.id,
+             agenda: agendaEvents,
+             appSettings: appSettings,
+             lastUpdated: Date.now()
+          });
+          if (error) throw error;
+          setSyncStatus('synced');
+        }
+      } catch (err) {
+        console.error("Settings save error:", err);
+      }
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [agendaEvents, appSettings, user, syncStatus]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
   const isNoteLocked = activeNote && activeNote.isLocked && !unlockedNotes.has(activeNote.id);
@@ -1094,6 +1326,7 @@ function MainApp() {
     setNotes(prev => [newDoc, ...prev]);
     setActiveNoteId(newDoc.id);
     setViewMode(type === 'mindmap' ? 'mindmap' : 'editor');
+    setSyncStatus('saving');
     setExpandedFolders(prev => ({...prev, [customFolder]: true}));
     if (window.innerWidth < 768) setLeftSidebarOpen(false);
   };
@@ -1126,20 +1359,32 @@ function MainApp() {
       }
       return note;
     }));
+    setSyncStatus('saving');
   }, []);
 
   const deleteNote = (id) => {
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: true, lastModified: Date.now() } : note));
+    setSyncStatus('saving');
     if (activeNoteId === id) setActiveNoteId(null);
   };
   
   const restoreNote = (id) => {
     setNotes(prevNotes => prevNotes.map(note => note.id === id ? { ...note, isDeleted: false, lastModified: Date.now() } : note));
+    setSyncStatus('saving');
   };
 
-  const permanentDeleteNote = (id) => {
-    setNotes(prevNotes => prevNotes.filter(n => n.id !== id));
+  const permanentDeleteNote = async (id) => {
+    const updatedNotes = notes.filter(n => n.id !== id);
+    setNotes(updatedNotes);
     if (activeNoteId === id) setActiveNoteId(null);
+    
+    if (user.isGuest || SUPABASE_URL.includes("xyz.supabase.co") || !supabaseClient) {
+       localStorage.setItem('erza_notes', JSON.stringify(updatedNotes));
+    } else { 
+        try { 
+            await supabaseClient.from('notes').delete().eq('id', id).eq('user_id', user.id);
+        } catch (e) {} 
+    }
   };
 
   const navigateToLink = (titleQuery) => {
@@ -1230,6 +1475,8 @@ function MainApp() {
     return { explicitBacklinks: explicit, implicitBacklinks: implicit };
   }, [notes, activeNote, viewMode, unlockedNotes]);
 
+  if (isInitializing) return html`<div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><${RefreshCw} className="animate-spin" size=${48} /></div>`;
+
   return html`
     <div className=${`fixed inset-0 flex w-full h-[100dvh] bg-slate-950 text-slate-300 overflow-hidden selection:bg-teal-500/30 ${appSettings.fontFamily}`}>
       
@@ -1244,6 +1491,7 @@ function MainApp() {
             <span className="tracking-wide text-xl font-serif">Erza Spark</span>
           </div>
           <div className="flex gap-2">
+            <button onClick=${() => {setSidebarTab('settings'); setViewMode('settings'); if(window.innerWidth < 1024) setLeftSidebarOpen(false);}} className=${`p-2 transition-colors rounded-xl border ${sidebarTab === 'settings' ? 'bg-teal-500/20 text-teal-400 border-teal-500/50' : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'}`}><${Settings} size=${18} /></button>
             <button className="lg:hidden p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl" onClick=${() => setLeftSidebarOpen(false)}><${X} size=${20} /></button>
           </div>
         </div>
@@ -1387,13 +1635,16 @@ function MainApp() {
               <div className="w-8 h-8 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
                 <${IconUser} size=${16} />
               </div>
-              <div className="text-[11px] truncate text-slate-400 font-mono max-w-[120px]">
-                Espace Local Sécurisé
+              <div className="text-[11px] truncate text-slate-400 font-mono max-w-[150px]">
+                ${user?.email || "Invité (Local)"}
               </div>
            </div>
            <div className="flex gap-1.5">
              <button onClick=${() => {setSidebarTab('settings'); setViewMode('settings'); if(window.innerWidth < 1024) setLeftSidebarOpen(false);}} className="text-slate-500 hover:text-teal-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Paramètres">
                <${Settings} size=${16}/>
+             </button>
+             <button onClick=${onLogout} className="text-slate-500 hover:text-rose-400 p-2 transition-colors bg-slate-950 rounded-xl border border-slate-800" title="Se déconnecter">
+               <${LogOut} size=${16}/>
              </button>
            </div>
         </div>
@@ -1547,7 +1798,7 @@ function MainApp() {
                     </div>
                     <div>
                        <h3 className="text-sm font-bold text-rose-500 uppercase tracking-widest mb-3">Zone de Danger</h3>
-                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles. La suppression locale est définitive.</p>
+                       <p className="text-xs text-slate-500 mb-3">Ces actions sont irréversibles.</p>
                        <button onClick=${() => {
                          if(window.confirm("Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT toutes les notes de la corbeille ?")) {
                            const trash = notes.filter(n => n.isDeleted);
@@ -1579,7 +1830,7 @@ function MainApp() {
           ` : viewMode === 'agenda' ? html`
             <${SimpleAgenda} agendaEvents=${agendaEvents} updateAgendaEvents=${setAgendaEvents} />
           ` : isNoteLocked ? html`
-            <${PasswordPrompt} key=${activeNote.id} note=${activeNote} onUnlock=${(id, resetPwd = false) => {
+            <${PasswordPrompt} key=${activeNote.id} note=${activeNote} userEmail="Local" onUnlock=${(id, resetPwd = false) => {
               const newSet = new Set(unlockedNotes);
               newSet.add(id);
               setUnlockedNotes(newSet);
@@ -1651,7 +1902,7 @@ function MainApp() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-purple-500"></div>
                 <${Feather} size=${56} className="mb-6 text-teal-500/40" />
                 <h2 className="text-3xl font-serif font-bold text-white mb-3 tracking-wide">Erza Spark</h2>
-                <p className="text-sm text-slate-400 mb-8 leading-relaxed font-medium">L'élégance de la pensée structurée. Espace 100% Local.</p>
+                <p className="text-sm text-slate-400 mb-8 leading-relaxed font-medium">L'élégance de la pensée structurée. Second Cerveau connecté.</p>
                 <div className="flex flex-col gap-3 w-full">
                   <button onClick=${() => createDocument('note')} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20"><${Plus} size=${18} /> Nouvelle Note</button>
                   <button onClick=${() => createDocument('mindmap')} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all border border-slate-700"><${Network} size=${18} /> Nouvelle Carte</button>
@@ -1665,10 +1916,78 @@ function MainApp() {
   `;
 }
 
-// --- MAIN RUNNER ---
+// --- APP WRAPPER (MANAGES AUTH STATE) ---
+const AppWrapper = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabaseClient) { setLoading(false); return; }
+    
+    // Check session on load
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleGuestLogin = () => {
+    setUser({ id: 'local-guest', email: 'Invité (Local)', isGuest: true });
+  };
+
+  const handleLogout = async () => {
+    if (user?.isGuest) {
+      setUser(null);
+    } else if (supabaseClient) {
+      await supabaseClient.auth.signOut();
+    }
+  };
+
+  if (loading) {
+    return html`<div className="h-screen w-full flex items-center justify-center bg-slate-950 text-teal-400"><${RefreshCw} className="animate-spin" size=${48} /></div>`;
+  }
+
+  if (!user) {
+    return html`<${AuthScreen} onGuestLogin=${handleGuestLogin} />`;
+  }
+
+  return html`<${MainApp} user=${user} onLogout=${handleLogout} />`;
+};
+
+// --- SECURE ERROR BOUNDARY ---
+class ErrorBoundary extends window.React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  resetApp = () => { this.setState({ hasError: false, error: null }); }
+  
+  render() {
+    if (this.state.hasError) {
+      return html`
+        <div className="flex h-screen w-full bg-slate-950 text-rose-400 items-center justify-center p-6 text-center font-sans">
+          <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 max-w-md shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-red-500"></div>
+            <h2 className="text-2xl font-serif font-bold text-white mb-2">Erreur inattendue</h2>
+            <p className="text-xs text-slate-500 mb-6 bg-black/20 p-3 rounded font-mono break-words border border-slate-800">${this.state.error?.toString() || 'Erreur interne'}</p>
+            <button onClick=${this.resetApp} className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-2xl font-bold transition-colors shadow-lg shadow-teal-500/20 flex justify-center items-center gap-2">
+              <${RefreshCw} size=${18}/> Recharger Erza Spark
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    return html`<${AppWrapper} />`;
+  }
+}
+
 const rootElement = document.getElementById('root');
 const root = createRoot(rootElement);
-root.render(html`<${MainApp} />`);
+root.render(html`<${ErrorBoundary} />`);
     </script>
 </body>
 </html>
