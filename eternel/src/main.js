@@ -597,11 +597,26 @@ function render(now){
   const len=Math.max(1,Math.hypot(f,s)),vel=(pressed.has('shift')?20:speedNormal)*dt;
   const nx=state.position.x+(Math.sin(state.yaw)*f+Math.cos(state.y)*s)/len*vel;
   const nz=state.position.z+(-Math.cos(state.y)*f+Math.sin(state.y)*s)/len*vel;
-  if(nx>-287&&nx<287&&nz>-315&&nz<252&&Math.hypot(nx+12,nz+35)>5){
-   let blocked=false;
-   for(const t of forestTrees)if(distance(nx,nz,t)<(t.hero?7:1.15*t.scale)){blocked=true;break;}
-   if(!blocked)state.position.set(nx,0,nz);
+  // Keep the player responsive even when dense vegetation overlaps a path.
+  // Test axes independently to allow sliding around trunks instead of freezing.
+  const canWalk=(x,z)=>{
+   if(x<=-287||x>=287||z<=-315||z>=252||Math.hypot(x+12,z+35)<=5)return false;
+   for(const t of forestTrees){
+    const radius=t.hero?5:Math.min(1.55,Math.max(.48,.52*t.scale));
+    if(distance(x,z,t)<radius)return false;
+   }
+   return true;
+  };
+  let px=state.position.x,pz=state.position.z;
+  if(canWalk(nx,pz))px=nx;
+  if(canWalk(px,nz))pz=nz;
+  // Recover automatically from scenery that was spawned around the camera.
+  if(px===state.position.x&&pz===state.position.z&&
+     (Math.abs(f)+Math.abs(s)>0.1)){
+    const touching=forestTrees.some(t=>distance(px,pz,t)<Math.min(1.55,Math.max(.48,.52*t.scale)));
+    if(touching){px=clamp(nx,-286,286);pz=clamp(nz,-314,251);}
   }
+  state.position.set(px,0,pz);
   const turn=Number(pressed.has('arrowright'))-Number(pressed.has('arrowleft'));state.yaw-=turn*dt*1.2;
   updateBiome();
   if(state.frame%30===0)updateNear();
