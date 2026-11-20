@@ -3,6 +3,7 @@ import {createEternalRealm} from './world-expansion.js';
 import {buildReferenceWorld} from './reference-world.js';
 import {getInputAxes,integrateMovement,getCompassDirection} from './movement.js';
 import {createExplorerAvatar} from './explorer-avatar.js';
+import {startGardenAudio} from './garden-audio.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import '../style.css';
 const ROOT=document.getElementById('root'),canvas=document.getElementById('scene');
@@ -468,6 +469,7 @@ function updateBiome(){
  if(n.dist<43)markBiome(n.index);
  if(n.index===state.biome)return;
  state.biome=n.index;
+ ambient?.setBiome(n.b.id);
  setText('biomeIndex',String(n.index+1).padStart(2,'0')+' / 07 · VOUS DÉCOUVREZ');
  setText('biomeName',n.b.name);setText('biomeSubtitle',n.b.caption);
 }
@@ -611,16 +613,20 @@ joy.addEventListener('pointermove',e=>{if(joy.hasPointerCapture(e.pointerId))joy
 const joyEnd=()=>{state.move.x=0;state.move.y=0;stick.style.transform='translate(0px,0px)';};
 joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);
 let ambient=null;
+el('sound').title='Activer les sons de la forêt et des cascades';
 el('sound').addEventListener('click',async()=>{
- if(ambient){await ambient.close();ambient=null;el('sound').textContent='♫';return;}
+ const button=el('sound');button.disabled=true;
  try{
-  const ctx=new AudioContext(),buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),samples=buf.getChannelData(0);
-  let x=0;for(let i=0;i<samples.length;i++){x=(x+(Math.random()*2-1)*.019)/1.019;samples[i]=x*.24;}
-  const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
-  const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=380;
-  const gain=ctx.createGain();gain.gain.value=.12;src.connect(filter);filter.connect(gain);gain.connect(ctx.destination);src.start();
-  ambient=ctx;el('sound').textContent='♪';
- }catch(e){console.warn('Audio not available',e)}
+  if(ambient){
+   await ambient.stop();ambient=null;
+   button.textContent='♫';button.title='Activer les sons de la nature';
+  }else{
+   ambient=await startGardenAudio();
+   ambient.setBiome(biomes[state.biome]?.id||'aube');
+   button.textContent='♪';button.title='Couper les sons de la nature';
+  }
+ }catch(error){console.warn('Ambiance sonore indisponible',error);}
+ finally{button.disabled=false;}
 });
 let lastFrames=0,statsTimer=performance.now();
 function render(now){
