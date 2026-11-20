@@ -193,7 +193,7 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
    const tip=mesh(new THREE.IcosahedronGeometry(1,1),glow,0,20,0);root.add(tip);
    floating.add(root);
   }
-  scene.add(floating);groups.push(floating);
+  batchArchitecture(floating);scene.add(floating);groups.push(floating);
  }
  function buildDawnBridge(){
   const g=new THREE.Group(),x=44,z=118,y=heightAt(x,z);
@@ -205,7 +205,9 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
     add(g,mesh(new THREE.CylinderGeometry(.12,.15,2.0,6),ivory,-10+i*2.25,1.0,s*3.4));
    }
   }
-  batchArchitecture(floating);scene.add(floating);groups.push(floating);()=>{try{buildDawnBridge();buildTestimonyGazebo();}catch(e){console.error('ÉTERNEL architecture A',e);}},mobile?1750:850);
+  batchArchitecture(g);scene.add(g);groups.push(g);
+ }
+ setTimeout(()=>{try{buildDawnBridge();buildTestimonyGazebo();}catch(e){console.error('ÉTERNEL architecture A',e);}},mobile?1750:850);
  setTimeout(()=>{try{buildMountainCitadel();buildHouseOfTheWord();}catch(e){console.error('ÉTERNEL architecture B',e);}},mobile?2800:1700);
  setTimeout(()=>{try{buildAllianceThreads();buildFloatingIslands();}catch(e){console.error('ÉTERNEL architecture C',e);}},mobile?4000:2600);
  return {
