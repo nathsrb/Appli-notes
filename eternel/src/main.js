@@ -371,6 +371,7 @@ const tourRoute=[[5,195,28],[6,151,26],[35,95,32],[45,40,41],[-12,-35,85],
 const tourCurve=new THREE.CatmullRomCurve3(tourRoute,false,'catmullrom',.3);
 let tour=null;
 function stopTour(){
+ releaseMouse();
  if(!tour)return;
  tour=null;
  show('tourExit',false);
@@ -524,6 +525,7 @@ function updateNear(){
 }
 function textNode(str){const p=document.createElement('p');p.textContent=String(str||'');return p;}
 function displayDetail(type,title,text,meta){
+ releaseMouse();
  setText('detailType',type);setText('detailName',title);
  const body=el('detailBody');body.replaceChildren(textNode(text));
  setText('detailMeta',meta||'');show('detailOverlay',true);state.overlay=true;
@@ -535,7 +537,9 @@ function interactWith(target){
  else if(target.kind==='testimony')displayDetail('TÉMOIGNAGE PARTAGÉ',p.title,p.testimony||'Témoignage déclaré exaucé.',(p.anonymous?'Anonyme':p.authorName)+' · Témoignage déclaré par son auteur');
  else displayDetail('BIOME D’ÉTERNEL',p.name,p.description,'Explorez librement ce paysage. Les données privées sont accessibles depuis l’espace de prière officiel.');
 }
+function releaseMouse(){if(document.pointerLockElement===canvas)void document.exitPointerLock?.();}
 function openMap(){
+ releaseMouse();
  const cont=el('mapList');cont.replaceChildren();
  biomes.forEach((b,i)=>{
   const btn=document.createElement('button');btn.type='button';
@@ -551,7 +555,7 @@ function openMap(){
  show('mapOverlay',true);state.overlay=true;
 }
 const communityURL='https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/';
-function openCommunity(){show('communityOverlay',true);state.overlay=true;}
+function openCommunity(){releaseMouse();show('communityOverlay',true);state.overlay=true;}
 function closeOverlay(id){show(id,false);state.overlay=false;canvas.focus();}
 el('enter').addEventListener('click',()=>{
  state.playing=true;show('intro',false);
@@ -566,6 +570,18 @@ el('openMap').addEventListener('click',openMap);
 el('minimapButton').addEventListener('click',openMap);
 el('cinemaButton').addEventListener('click',toggleCinematic);
 el('cameraButton').addEventListener('click',cameraModeToggle);
+el('mouseLock').addEventListener('click',()=>{
+ if(document.pointerLockElement===canvas)releaseMouse();
+ else if(state.playing&&!tour)void canvas.requestPointerLock?.();
+});
+document.addEventListener('pointerlockchange',()=>{
+ setText('mouseLock',document.pointerLockElement===canvas?'☷ Libre':'☷ Souris');
+});
+document.addEventListener('mousemove',e=>{
+ if(document.pointerLockElement!==canvas||!state.playing||state.overlay||tour)return;
+ state.yaw-=e.movementX*.0027;
+ state.pitch=clamp(state.pitch-e.movementY*.0022,-.72,.62);
+});
 el('tourButton').addEventListener('click',startTour);
 el('tourStart').addEventListener('click',startTour);
 el('tourExit').addEventListener('click',stopTour);
@@ -606,6 +622,7 @@ document.addEventListener('keydown',e=>{
  if(key==='m'&&!e.repeat&&state.playing)openMap();
  if(key==='c'&&!e.repeat&&state.playing)cameraModeToggle();
  if(key==='v'&&!e.repeat)startTour();
+ if(key==='l'&&!e.repeat&&state.playing&&!tour){if(document.pointerLockElement===canvas)releaseMouse();else void canvas.requestPointerLock?.();}
  if(key==='p'&&!e.repeat&&state.playing)toggleCinematic();
  if(key==='f'&&!e.repeat&&state.playing){if(document.fullscreenElement)void document.exitFullscreen?.();else ROOT.requestFullscreen?.().catch?.(()=>{});}
 });document.addEventListener('keyup',e=>pressed.delete(e.key.toLowerCase()));
