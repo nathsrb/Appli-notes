@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createSanctuaries } from './sanctuaries.js';
 
 /**
  * ÉTERNEL • Direction artistique des 7 biomes
@@ -356,11 +357,13 @@ export function buildReferenceWorld({scene,biomes,heightAt,mobile,onStatus=()=>{
    }catch(error){console.error('Bassins',error);}
  },mobile?1750:950);
  const realAssets=stagedMeshes({scene,biomes,heightAt,mobile,onStatus});
+ const sanctuaries=createSanctuaries({scene,biomes,heightAt,mobile});
  let time=0;
  return {
   realAssets,created,
   update(now){
    if(now-time<90)return;time=now;
+   sanctuaries.update(now);
    for(let j=0;j<pools.length;j++){
     const pond=pools[j];
     pond.rings.forEach((ring,i)=>{
@@ -374,6 +377,7 @@ export function buildReferenceWorld({scene,biomes,heightAt,mobile,onStatus=()=>{
     for(const g of created)scene.remove(g);
     for(const gp of realAssets.groups)scene.remove(gp);
     for(const pool of pools){scene.remove(pool.plane);pool.rings.forEach(r=>scene.remove(r));}
+    sanctuaries.destroy();
     petalTexture.dispose();barkTexture.dispose();bark.dispose();
   }
  };
