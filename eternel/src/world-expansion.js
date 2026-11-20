@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 /*
  * ÉTERNEL — Habitats interactifs.
  * Décors originaux procéduraux, sans lien vers des assets externes non licenciés.
@@ -190,7 +191,6 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
   // Keep single material draw per woodland region, not one draw per vine.
   function combine(geos,material){
    if(!geos.length)return;
-   const {mergeGeometries}=THREE.BufferGeometryUtils||{};
    // Loaded geometries share attributes, but groups are cheap when merge isn't available.
    if(mergeGeometries){
      const merged=mergeGeometries(geos,false);if(merged)add(new THREE.Mesh(merged,material));
