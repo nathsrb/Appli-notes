@@ -18,7 +18,7 @@ const biomes=[
 ];
 const ordinary=biomes.filter(b=>b.id!=='arbre');
 const speedNormal=13,camHeight=3.15;
-const rand=(seed)=>()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
+const rand=(seed)=>{seed=(Math.abs(Math.floor(seed))%2147483646)+1;return ()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};};
 const rnd=rand(492719),q=new THREE.Quaternion(),o=new THREE.Object3D(),c=new THREE.Color();
 const mobile=matchMedia('(pointer:coarse)').matches;
 const quality=mobile?'balanced':'high';
@@ -162,7 +162,7 @@ function tree(x,z,scale,seed,variant=0,hero=false){
  const merged=mergeGeometries([...limbGeos,...rootGeos],false);
  if(merged)group.add(new THREE.Mesh(merged,trunkMat));
  [...limbGeos,...rootGeos].forEach(g=>g.dispose());
- const count=hero?(mobile?4300:8200):(mobile?240:420);
+ const count=hero?(mobile?3100:5100):(mobile?180:270);
  const inst=new THREE.InstancedMesh(leafGeo,materialLeaves(variant),count);
  for(let i=0;i<count;i++){
    const p=leaves[Math.floor(rr()*leaves.length)];
@@ -181,7 +181,7 @@ function tree(x,z,scale,seed,variant=0,hero=false){
 tree(-12,-35,1.45,2091,4,true);
 const forestRnd=rand(829);
 for(const b of biomes){
- const counts={aube:20,central:27,arbre:23,alliances:45,temoignages:19,mont:22,parole:14};
+ const counts={aube:15,central:21,arbre:20,alliances:27,temoignages:15,mont:14,parole:11};
  for(let i=0;i<counts[b.id];i++){
    const a=forestRnd()*Math.PI*2,r=16+forestRnd()*76;
    const x=b.x+Math.cos(a)*r,z=b.z+Math.sin(a)*r;
@@ -201,8 +201,8 @@ const flowerTexture=()=>{
 const flowerTex=flowerTexture();
 const flowerMat=new THREE.MeshBasicMaterial({map:flowerTex,transparent:true,depthWrite:false,side:THREE.DoubleSide});
 const grassMat=new THREE.MeshStandardMaterial({color:0xa6c48b,roughness:1,side:THREE.DoubleSide});
-const grasses=new THREE.InstancedMesh(new THREE.PlaneGeometry(.16,1.35),grassMat,mobile?6500:14000);
-const blossoms=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.25,1.25),flowerMat,mobile?3600:7600);
+const grasses=new THREE.InstancedMesh(new THREE.PlaneGeometry(.16,1.35),grassMat,mobile?4800:9000);
+const blossoms=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.25,1.25),flowerMat,mobile?2500:4800);
 for(let i=0;i<grasses.count;i++){
  const b=biomes[Math.floor(rnd()*biomes.length)];
  const x=b.x+(rnd()-.5)*160,z=b.z+(rnd()-.5)*145;
