@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#123730"/><meta name="description" content="ÉTERNEL, le Jardin des Intercesseurs : exploration de sept biomes extraordinaires en 3D."/>
+<title>ÉTERNEL — Le Jardin des Intercesseurs · Univers 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head><body>
+<div id="root">
+<canvas id="scene" aria-label="Exploration 3D des sept biomes" tabindex="0"></canvas>
+<div id="loader" role="status"><span class="emblem">✧</span><strong>ÉTERNEL</strong><p>Le jardin prend vie...</p></div>
+<section id="intro" class="intro" hidden>
+ <div class="intro-shade"></div><div class="intro-content">
+ <div class="eyebrow">✧ &nbsp; ÉTERNEL &nbsp; — &nbsp; LE JARDIN DES INTERCESSEURS</div>
+ <div class="eyebrow" style="margin-top:80px">UN MONDE DE LUMIÈRE ET D'INTERCESSION</div>
+ <h1>Entrez dans<br><em>le jardin miraculeux.</em></h1>
+ <p>Sept biomes vivants à explorer, des paysages extraordinaires et des prières qui deviennent des lumières.</p>
+ <button id="enter" class="button-primary">Entrer dans le jardin <span>↗</span></button>
+ <div class="minor-note">EXPÉRIENCE EXPLORATOIRE 3D · SON DÉSACTIVÉ PAR DÉFAUT</div></div>
+ <div class="intro-footer">ÉTERNEL · CHAPITRE I : LA VALLÉE DE L'AUBE</div>
+</section>
+<header id="top" hidden><div class="brand"><span class="brand-icon">✧</span><div><b>ÉTERNEL</b><small>LE JARDIN DES INTERCESSEURS</small></div></div>
+<nav class="top-actions"><button id="openMap" title="Carte des biomes">⌖ <span>Carte</span></button><button id="sound" title="Activer ou désactiver l'ambiance">♫</button><button id="openCommunity" title="Espace de prière complet">✧ <span>Prières et comptes</span></button></nav></header>
+<aside id="location" hidden><small id="biomeIndex">01 / 07 · VOUS DÉCOUVREZ</small><h2 id="biomeName">La Vallée de l'Aube</h2><p id="biomeSubtitle">Là où commence le voyage</p><span class="line"></span></aside>
+<div id="liveStatus" class="live-status" hidden>Les prières publiques se synchronisent…</div>
+<div id="near" class="near" hidden><span>✧</span><div><small id="nearCategory">UN LIEU À DÉCOUVRIR</small><b id="nearName">Sanctuaire</b></div><button id="nearAction">Découvrir ↗</button></div>
+<div id="touch" hidden><div id="joystick" aria-label="Joystick de déplacement" role="group"><div id="stick"></div></div><button id="touchAction" aria-label="Interagir">✧</button></div>
+<footer id="hints" hidden><span>GLISSER POUR REGARDER · ZQSD/WASD POUR MARCHER · E POUR INTERAGIR</span><span id="fps">QUALITÉ ADAPTATIVE</span></footer>
+<section class="overlay" id="mapOverlay" hidden><div class="panel atlas"><button id="closeMap" class="close" title="Fermer">×</button><div class="panel-kicker">ATLAS D'ÉTERNEL</div><h2>Les sept biomes</h2><p>Le monde s'explore à pied. Choisissez une destination pour voyager rapidement.</p><div class="atlas-grid" id="mapList"></div><div class="small-print">Prévisualisation évolutive : les biomes sont représentés par des scènes 3D construites spécialement pour cette exploration.</div></div></section>
+<section class="overlay" id="detailOverlay" hidden><div class="panel detail"><button id="closeDetail" class="close" title="Fermer">×</button><span class="detail-emblem">✧</span><div class="panel-kicker" id="detailType">INTENTION PUBLIQUE</div><h2 id="detailName"></h2><div class="detail-body" id="detailBody"></div><div id="detailMeta" class="small-print"></div><div class="panel-actions"><button id="resume" class="button-primary">Reprendre la marche</button><button id="gotoCommunity" class="button-secondary">Intercéder dans ÉTERNEL ↗</button></div></div></section>
+<section class="overlay community-overlay" id="communityOverlay" hidden><div class="community-shell"><div class="community-head"><div><small>ÉTERNEL · ESPACE COMMUNAUTAIRE</small><strong>Vos prières, vos alliances et votre carnet</strong><p>L'espace existant reste accessible avec ses propres comptes et données.</p></div><div><a id="openOfficial" target="_blank" rel="noopener noreferrer" href="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/">Ouvrir dans un onglet ↗</a><button class="close" id="closeCommunity">×</button></div></div><iframe id="communityFrame" title="Application officielle ÉTERNEL" loading="lazy" referrerpolicy="no-referrer" src="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/"></iframe><div class="community-fallback">Si la connexion ne fonctionne pas dans cette fenêtre, utilisez « Ouvrir dans un onglet ».</div></div></section>
+<div id="error" class="overlay" hidden><div class="panel"><h2>ÉTERNEL</h2><p>WebGL n'est pas disponible. Vous pouvez toujours ouvrir les prières sur l'application officielle.</p><a href="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/">Ouvrir les prières ↗</a></div></div>
+<div class="preview-stamp">UNIVERS 3D · PRÉVISUALISATION · DONNÉES PUBLIQUES SEULEMENT</div>
+</div><script type="module" src="/src/main.js"></script></body></html>
