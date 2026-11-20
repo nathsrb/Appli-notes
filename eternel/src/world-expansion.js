@@ -103,7 +103,7 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
   for(let i=0;i<palmCount;i++){
    const b=jungleBiomes[Math.floor(r()*jungleBiomes.length)];
    const at=inBiome(b,b.id==='aube'?105:78);
-   if(inWater(at.x,at.z)||flatArea(at.x,at.z))continue;
+   if(inWater(at.x,at.z)||flatArea(at.x,at.z)){ i--; continue; }
    const h=12+r()*12,sc=.72+r()*.65,y=ground(at.x,at.z);
    bases.push({x:at.x,z:at.z,scale:1.0});
    dummy.position.set(at.x,y+h*.5,at.z);dummy.rotation.set(.05*r(),r()*PI*2,.045*r());dummy.scale.set(sc,h,sc);
@@ -340,13 +340,23 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
   return spots;
  }
  // World creation is organized in batches for optional cancellation and quality tiers.
- buildPalms();
- buildGroundPlants();
- vinesAndRoots();
- giantFlora();
- mistAndWaterfalls();
- celestialAccents();
- mountainsAndArchitecture();
+ const stages=[
+  ['Canopée tropicale',buildPalms],
+  ['Fougères et sous-bois',buildGroundPlants],
+  ['Racines et lianes',vinesAndRoots],
+  ['Fleurs monumentales',giantFlora],
+  ['Cascades et brume',mistAndWaterfalls],
+  ['Lueurs et sanctuaires',celestialAccents],
+  ['Montagnes et architectures',mountainsAndArchitecture]
+ ];
+ let stageIndex=0,disposed=false;
+ function nextStage(){
+  if(disposed||stageIndex>=stages.length)return;
+  const [label,run]=stages[stageIndex++];
+  try{run();}catch(error){console.error('ÉTERNEL world biome stage: '+label,error);}
+  if(stageIndex<stages.length)setTimeout(nextStage,mobile?340:190);
+ }
+ setTimeout(nextStage,350);
  const landmarks=createJourneyMemos();
  let prevTick=0;
  return {
@@ -361,6 +371,7 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
    }
   },
   destroy(){
+    disposed=true;
     for(const obj of objects){
       scene.remove(obj);obj.traverse(node=>{if(node.isMesh||node.isInstancedMesh){node.geometry?.dispose();}});
     }
