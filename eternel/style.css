@@ -62,3 +62,11 @@
  #playerInfo strong{font-size:9px}
  #controlGuide{top:51%}
 }
+
+/* Cinematic sightseeing: a genuine camera flight through the 3D world. */
+.intro-tour{border:1px solid #f2dca675;color:#f7e8c7;background:#163c339c;border-radius:24px;padding:12px 18px;margin:6px 0 4px;font-size:12px;box-shadow:0 6px 24px #082a1d55}
+.intro-tour:hover{background:#315c42}
+#tourExit{position:absolute;z-index:25;bottom:max(28px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;color:#f9ebd4;background:#193f35d1;padding:10px 14px;border-radius:18px;border:1px solid #ffdeae91;backdrop-filter:blur(10px);white-space:nowrap}
+#tourExit span{font-size:10px;letter-spacing:.14em}
+#tourExit button{border:0;border-radius:12px;background:#f8eacb;color:#315a46;font-size:11px;padding:10px 13px;font-weight:700;cursor:pointer}
+@media(max-width:700px){#tourExit{max-width:94vw;padding:7px 9px;bottom:25px;gap:7px}#tourExit span{font-size:8px}#tourExit button{font-size:10px;padding:9px}}
