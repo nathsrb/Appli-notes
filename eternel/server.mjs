@@ -38,3 +38,15 @@ const server=http.createServer(async(req,res)=>{
  catch{if(pathname.indexOf('.')===-1){try{send(200,await fs.readFile(path.join(base,'index.html')),'text/html; charset=utf-8');}catch{send(404,'Not found','text/plain');}}else send(404,'Not found','text/plain');}
 });
 server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('ÉTERNEL 3D server ready'));
+const checkPublicSource=async()=>{
+  try{
+    const response=await fetch(publicOrigin+'/api/prayers',{headers:{Accept:'application/json'},signal:AbortSignal.timeout(12000)});
+    if(!response.ok){console.warn('[ÉTERNEL] source des prières publiques indisponible:',response.status);return;}
+    const data=await response.json();
+    const count=Array.isArray(data?.prayers)?data.prayers.length:null;
+    console.log('[ÉTERNEL] accès aux prières publiques vérifié :',count===null?'format inattendu':count+' sujets visibles');
+  }catch(error){
+    console.warn('[ÉTERNEL] vérification du flux public impossible :',error?.message||String(error));
+  }
+};
+setTimeout(checkPublicSource,2500);
