@@ -31,4 +31,24 @@
 <section class="overlay community-overlay" id="communityOverlay" hidden><div class="community-shell"><div class="community-head"><div><small>ÉTERNEL · ESPACE COMMUNAUTAIRE</small><strong>Vos prières, vos alliances et votre carnet</strong><p>L'espace existant reste accessible avec ses propres comptes et données.</p></div><div><a id="openOfficial" target="_blank" rel="noopener noreferrer" href="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/">Ouvrir dans un onglet ↗</a><button class="close" id="closeCommunity">×</button></div></div><iframe id="communityFrame" title="Application officielle ÉTERNEL" loading="lazy" referrerpolicy="no-referrer" src="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/"></iframe><div class="community-fallback">Si la connexion ne fonctionne pas dans cette fenêtre, utilisez « Ouvrir dans un onglet ».</div></div></section>
 <div id="error" class="overlay" hidden><div class="panel"><h2>ÉTERNEL</h2><p>WebGL n'est pas disponible. Vous pouvez toujours ouvrir les prières sur l'application officielle.</p><a href="https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/">Ouvrir les prières ↗</a></div></div>
 <div class="preview-stamp">UNIVERS 3D · PRÉVISUALISATION · DONNÉES PUBLIQUES SEULEMENT</div>
-</div><script type="module" src="/src/main.js"></script></body></html>
+</div>
+<script>
+(function(){
+  function rescue(message){
+    var loader=document.getElementById('loader');
+    if(!loader||loader.hidden)return;
+    loader.style.cssText='position:absolute;inset:0;z-index:70;background:#153d3c;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:#f6ebd4';
+    loader.innerHTML='';
+    var logo=document.createElement('div');logo.textContent='✧';logo.style.cssText='font-size:72px;color:#f0d3a2';
+    var title=document.createElement('h2');title.textContent='Le Jardin rencontre un obstacle';title.style.fontFamily='Georgia,serif';
+    var text=document.createElement('p');text.textContent=message;text.style.cssText='max-width:420px;line-height:1.7;font-size:14px';
+    var retry=document.createElement('button');retry.textContent='Réessayer';retry.style.cssText='background:#f5ecdc;border:0;color:#244d40;border-radius:22px;padding:14px 25px;cursor:pointer';
+    retry.onclick=function(){location.reload();};
+    var link=document.createElement('a');link.href='https://eternel-le-jardin-des-intercessions-dgus86.v2.appdeploy.ai/';link.textContent="Accéder aux sujets de prière ↗";link.style.cssText='margin-top:20px;color:#ffe5b7;font-size:12px;text-decoration:underline';
+    loader.append(logo,title,text,retry,link);
+  }
+  window.addEventListener('error',function(e){if(document.getElementById('intro')?.hidden)rescue('Impossible de démarrer le moteur 3D. Vous pouvez réessayer ou consulter les sujets de prière.');});
+  window.setTimeout(function(){if(document.getElementById('intro')?.hidden)rescue('Le démarrage du monde 3D a dépassé le délai prévu sur cet appareil.');},18000);
+})();
+</script>
+<script type="module" src="/src/main.js"></script></body></html>
