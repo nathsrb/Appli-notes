@@ -70,3 +70,29 @@
 #tourExit span{font-size:10px;letter-spacing:.14em}
 #tourExit button{border:0;border-radius:12px;background:#f8eacb;color:#315a46;font-size:11px;padding:10px 13px;font-weight:700;cursor:pointer}
 @media(max-width:700px){#tourExit{max-width:94vw;padding:7px 9px;bottom:25px;gap:7px}#tourExit span{font-size:8px}#tourExit button{font-size:10px;padding:9px}}
+
+/* Keep every control visible and separated on iPhone. */
+.top-actions{flex-wrap:nowrap}
+#mouseLock{font-size:10px}
+@media(max-width:750px){
+ #top{left:7px;right:7px;top:max(9px,env(safe-area-inset-top))}
+ .brand{gap:3px}
+ .brand-icon{font-size:30px}
+ .brand b{font-size:17px;letter-spacing:.07em}
+ .brand small{display:none}
+ .top-actions{gap:3px}
+ .top-actions button{min-width:30px;min-height:32px;padding:5px 6px;font-size:10px;white-space:nowrap;border-radius:9px}
+ #mouseLock,#cinemaButton,#fullScreenButton,#resetExplorer{display:none!important}
+ .top-actions button span{display:none}
+ #cameraButton{font-size:9px}
+ #location{top:73px;left:10px}
+ #location h2{font-size:32px}
+ .mini-map{top:84px;width:94px}
+ .live-status{top:169px}
+ .expedition-box{top:210px}
+}
+@media(max-width:365px){
+ .brand b{font-size:15px}
+ .top-actions button{min-width:27px;padding:4px;font-size:9px}
+ #tourButton{display:none}
+}
