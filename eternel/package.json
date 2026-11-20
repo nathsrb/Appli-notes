@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "start": "node server.mjs"
+    "build": "npm run test && vite build",
+    "start": "node server.mjs",
+    "test": "node --test src/movement.test.mjs"
   },
   "dependencies": {
     "three": "^0.175.0"
