@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {createEternalRealm} from './world-expansion.js';
+import {buildReferenceWorld} from './reference-world.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import '../style.css';
 const ROOT=document.getElementById('root'),canvas=document.getElementById('scene');
@@ -343,6 +344,14 @@ async function loadPrayers(){
 
 /* Le monde évolue derrière la vue, par étapes pour conserver un démarrage rapide. */
 const expeditionScene=createEternalRealm({scene,biomes,heightAt,mobile,forestTrees});
+const referenceScene=buildReferenceWorld({
+ scene,biomes,heightAt,mobile,
+ onStatus:(loaded,total)=>{
+  setText('artStatus',loaded+' / '+total+' modèles naturels intégrés');
+  show('artStatus',true);
+  if(loaded>=total)setTimeout(()=>show('artStatus',false),6500);
+ }
+});
 const VISIT_KEY='eternel-3d-biome-discoveries-v1';
 const discovered=new Set();
 try{const old=JSON.parse(localStorage.getItem(VISIT_KEY)||'[]');if(Array.isArray(old))old.filter(x=>biomes.some(b=>b.id===x)).forEach(x=>discovered.add(x));}catch{}
@@ -606,6 +615,7 @@ function render(now){
   riverMat.roughness=.15+.06*Math.sin(now*.0008);
  }
  expeditionScene.update(now,state.position);
+ referenceScene.update(now);
  if(state.frame%20===0){updateExpeditionHUD();updateMinimap();}
  animateLighting(dt);
  renderer.render(scene,camera);
@@ -621,6 +631,6 @@ function onResize(){camera.aspect=innerWidth/innerHeight;camera.updateProjection
 window.addEventListener('resize',onResize);window.addEventListener('orientationchange',()=>setTimeout(onResize,200));
 camera.position.set(5,3.2,192);camera.rotation.y=0;
 requestAnimationFrame(render);
-setTimeout(()=>{show('loader',false);show('intro',true)},200);
+setTimeout(()=>{show('loader',false);show('intro',true)},850);
 loadPrayers();
 setInterval(()=>{if(document.visibilityState==='visible')loadPrayers()},90000);
