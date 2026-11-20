@@ -181,17 +181,42 @@ function tree(x,z,scale,seed,variant=0,hero=false){
 }
 tree(-12,-35,1.45,2091,4,true);
 const forestRnd=rand(829);
+const forestQueue=[];
 for(const b of biomes){
- const counts={aube:15,central:21,arbre:20,alliances:27,temoignages:15,mont:14,parole:11};
+ const counts={aube:14,central:19,arbre:20,alliances:24,temoignages:14,mont:12,parole:10};
  for(let i=0;i<counts[b.id];i++){
-   const a=forestRnd()*Math.PI*2,r=16+forestRnd()*76;
-   const x=b.x+Math.cos(a)*r,z=b.z+Math.sin(a)*r;
+   const angle=forestRnd()*Math.PI*2,rad=16+forestRnd()*76;
+   const x=b.x+Math.cos(angle)*rad,z=b.z+Math.sin(angle)*rad;
    if(Math.hypot(x+12,z+35)<22||Math.hypot(x-b.x,z-b.z)<8||Math.hypot(x-68,z-180)<11)continue;
    if(Math.abs(x)>290||Math.abs(z)>310)continue;
-   const s=(b.id==='alliances'?1.1:1)*(0.6+forestRnd()*.55);
-   tree(x,z,s,1000+i*37+Math.floor(b.x*117+8000),b.id==='temoignages'?2:b.id==='alliances'?3:b.id==='mont'?4:Math.floor(forestRnd()*4));
+   const scale=(b.id==='alliances'?1.1:1)*(0.6+forestRnd()*.55);
+   const variant=b.id==='temoignages'?2:b.id==='alliances'?3:b.id==='mont'?4:Math.floor(forestRnd()*4);
+   forestQueue.push({x,z,scale,seed:1000+i*37+Math.floor(b.x*117+8000),variant,biome:b.id});
  }
 }
+// Only the first trees block initial rendering. Other trees stream in progressively.
+forestQueue.sort((a,b)=>{
+ const da=Math.hypot(a.x-5,a.z-145),db=Math.hypot(b.x-5,b.z-145);
+ return da-db;
+});
+for(let i=0;i<(mobile?7:12)&&forestQueue.length;i++){
+ const t=forestQueue.shift();tree(t.x,t.z,t.scale,t.seed,t.variant);
+}
+const scheduleForest=(work)=>{
+ if(typeof window.requestIdleCallback==='function')window.requestIdleCallback(work,{timeout:1500});
+ else setTimeout(work,155);
+};
+function streamForest(){
+ let items=0;
+ const batch=mobile?2:4;
+ while(forestQueue.length&&items<batch){
+   const t=forestQueue.shift();
+   try{tree(t.x,t.z,t.scale,t.seed,t.variant)}catch(error){console.error('Tree terrain:',error);}
+   items++;
+ }
+ if(forestQueue.length)scheduleForest(streamForest);
+}
+setTimeout(()=>{if(forestQueue.length)scheduleForest(streamForest)},950);
 const flowerTexture=()=>{
  const cv=document.createElement('canvas');cv.width=64;cv.height=64;const ctx=cv.getContext('2d');
  const grad=ctx.createRadialGradient(32,32,4,32,32,32);
