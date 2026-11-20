@@ -403,6 +403,32 @@ function toggleCinematic(){
  show('cinemaExit',cinematic);
 }
 const state={playing:false,overlay:false,near:null,biome:0,yaw:0,pitch:-.07,position:v3(5,0,192),move:{x:0,y:0},pointer:null,frame:0,last:performance.now(),fpsAt:0,frames:0,quality:Math.min(devicePixelRatio||1,frameCap)};
+
+/* Four artistic light phases, controlled in the game HUD. */
+const LIGHTING=[
+ {name:'Aube',icon:'☼',top:0x729baf,horizon:0xe7d9b2,bottom:0xaacabe,fog:0xaacbb5,sun:0xffe3ab,intensity:3.1,exposure:1.43},
+ {name:'Jour',icon:'☀',top:0x95c6d9,horizon:0xf4edcf,bottom:0xb0d3bf,fog:0xbcd9ca,sun:0xffefd5,intensity:3.55,exposure:1.49},
+ {name:'Crépuscule',icon:'☾',top:0x47688f,horizon:0xffb998,bottom:0x97afa8,fog:0x8ea6a8,sun:0xffbd92,intensity:2.1,exposure:1.38},
+ {name:'Nuit étoilée',icon:'✦',top:0x1a3156,horizon:0x3b5b73,bottom:0x668c83,fog:0x678d86,sun:0xa4c4e3,intensity:1.10,exposure:1.25}
+];
+let lightingIndex=0;
+const phases=LIGHTING.map(p=>({...p,topColor:new THREE.Color(p.top),horizonColor:new THREE.Color(p.horizon),bottomColor:new THREE.Color(p.bottom),fogColor:new THREE.Color(p.fog),sunColor:new THREE.Color(p.sun)}));
+function nextLighting(){
+ lightingIndex=(lightingIndex+1)%LIGHTING.length;
+ const phase=LIGHTING[lightingIndex];
+ const btn=el('lightButton');if(btn){btn.textContent=phase.icon;btn.title='Lumière : '+phase.name+' · changer';}
+ setText('lightPhaseName',phase.name.toUpperCase());
+}
+function animateLighting(dt){
+ const target=phases[lightingIndex],ease=clamp(dt*1.7,0,.08);
+ skyMat.uniforms.top.value.lerp(target.topColor,ease);
+ skyMat.uniforms.horizon.value.lerp(target.horizonColor,ease);
+ skyMat.uniforms.bottom.value.lerp(target.bottomColor,ease);
+ scene.fog.color.lerp(target.fogColor,ease);
+ sun.color.lerp(target.sunColor,ease);
+ sun.intensity+=(target.intensity-sun.intensity)*ease;
+ renderer.toneMappingExposure+=(target.exposure-renderer.toneMappingExposure)*ease;
+}
 const pressed=new Set();
 function nearestBiome(){
  let near=biomes[0],dist=Infinity,index=0;
@@ -479,6 +505,7 @@ el('enter').addEventListener('click',()=>{
 el('openMap').addEventListener('click',openMap);
 el('minimapButton').addEventListener('click',openMap);
 el('cinemaButton').addEventListener('click',toggleCinematic);
+el('lightButton').addEventListener('click',nextLighting);
 el('cinemaExit').addEventListener('click',toggleCinematic);
 el('fullScreenButton').addEventListener('click',()=>{
  if(document.fullscreenElement){void document.exitFullscreen?.();}
@@ -580,7 +607,7 @@ function render(now){
  }
  expeditionScene.update(now,state.position);
  if(state.frame%20===0){updateExpeditionHUD();updateMinimap();}
- sun.intensity=3.0+.23*Math.sin(now*.00008);
+ animateLighting(dt);
  renderer.render(scene,camera);
  state.frame++;lastFrames++;
  if(now-statsTimer>2700){
