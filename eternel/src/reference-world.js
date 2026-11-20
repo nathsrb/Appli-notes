@@ -158,7 +158,7 @@ function flowerTree(scene,terrain,x,z,seed,scale=1,palette=0,detail=1,petalTextu
   const hue=palette===3?.76:.90; c.setHSL(hue+rnd()*.08,.33+rnd()*.24,.75+rnd()*.18);
   petals.setColorAt(i,c);
  }
- petals.instanceMatrix.needsUpdate=true;petals.frustumCulled=false;g.add(petals);
+ petals.instanceMatrix.needsUpdate=true;petals.computeBoundingSphere();petals.frustumCulled=true;g.add(petals);
  // A hand-sculpted, freestanding silhouette with multiple organic limb structures.
  g.userData.eternelBloom=true;scene.add(g);return g;
 }
@@ -211,7 +211,7 @@ function monumentTree(scene,terrain,x,z,barkMat,petalTex,mobile){
   clr.setHSL(rnd()>.45?.91:.12,.33+rnd()*.19,.72+rnd()*.18);
   blossoms.setColorAt(i,clr);
  }
- blossoms.instanceMatrix.needsUpdate=true;blossoms.frustumCulled=false;g.add(blossoms);
+ blossoms.instanceMatrix.needsUpdate=true;blossoms.computeBoundingSphere();blossoms.frustumCulled=true;g.add(blossoms);
  const lanternGold=new THREE.MeshStandardMaterial({color:'#efca86',metalness:.62,roughness:.28});
  const lit=new THREE.MeshBasicMaterial({color:'#ffe4a2'});
  const lanterns=new THREE.Group();
