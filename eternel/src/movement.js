@@ -42,7 +42,10 @@ export function integrateMovement(origin,yaw,axes,delta,options={}){
   const slideX=desiredX-dot*nx,slideZ=desiredZ-dot*nz;
   x=clamp(origin.x+slideX,bounds.minX,bounds.maxX);
   z=clamp(origin.z+slideZ,bounds.minZ,bounds.maxZ);
-  if(Math.hypot(x-b.x,z-b.z)<radius){
+  // Tangent movement may remain slightly inside the radius when the player
+  // started there. Keep the step if it increases distance from the obstacle.
+  if(Math.hypot(x-b.x,z-b.z)<radius &&
+     Math.hypot(x-b.x,z-b.z)<=prev+.00001){
    x=clamp(origin.x,bounds.minX,bounds.maxX);
    z=clamp(origin.z,bounds.minZ,bounds.maxZ);
   }
