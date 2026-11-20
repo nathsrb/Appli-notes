@@ -335,6 +335,70 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
   }
   add(stairGroup);
  }
+
+ const wildlife={butterflies:[],petals:null,velocities:null,left:null,right:null};
+ function wildlifeAndGodrays(){
+   // Magical wildlife and falling blossom petals make each biome feel inhabited.
+   const count=mobile?18:48;
+   const wingGeoL=new THREE.PlaneGeometry(.8,.58);wingGeoL.translate(-.4,0,0);
+   const wingGeoR=new THREE.PlaneGeometry(.8,.58);wingGeoR.translate(.4,0,0);
+   const wingMat=new THREE.MeshBasicMaterial({color:'#ffe4b2',transparent:true,opacity:.88,side:THREE.DoubleSide,depthWrite:false});
+   const left=instanced(wingGeoL,wingMat,count),right=instanced(wingGeoR,wingMat,count);
+   for(let i=0;i<count;i++){
+     const b=i%2===0?biomes[4]:biomes[i%3===0?2:1];
+     const p=inBiome(b,58);
+     wildlife.butterflies.push({x:p.x,z:p.z,y:ground(p.x,p.z)+2+r()*3,phase:r()*PI*2,scale:.26+r()*.46});
+   }
+   wildlife.left=left;wildlife.right=right;add(left);add(right);
+   const countPetals=mobile?270:650;
+   const pos=new Float32Array(countPetals*3),colors=new Float32Array(countPetals*3),vel=new Float32Array(countPetals);
+   for(let i=0;i<countPetals;i++){
+     const b=i%5===0?biomes[2]:biomes[4],x=b.x+(r()-.5)*155,z=b.z+(r()-.5)*135;
+     pos[i*3]=x;pos[i*3+1]=ground(x,z)+2+r()*21;pos[i*3+2]=z;
+     const tint=new THREE.Color().setHSL(.88+r()*.10,.36+r()*.35,.79+r()*.15);
+     colors[i*3]=tint.r;colors[i*3+1]=tint.g;colors[i*3+2]=tint.b;
+     vel[i]=.004+r()*.01;
+   }
+   const geom=new THREE.BufferGeometry();
+   geom.setAttribute('position',new THREE.BufferAttribute(pos,3));
+   geom.setAttribute('color',new THREE.BufferAttribute(colors,3));
+   const petals=new THREE.Points(geom,new THREE.PointsMaterial({size:.65,vertexColors:true,transparent:true,opacity:.86,depthWrite:false,sizeAttenuation:true}));
+   wildlife.petals=petals;wildlife.velocities=vel;add(petals);
+   const lightMat=new THREE.MeshBasicMaterial({color:0xffe8ac,transparent:true,opacity:.055,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+   for(let i=0;i<(mobile?5:15);i++){
+     const b=i%3===0?biomes[2]:i%2===0?biomes[0]:biomes[1];
+     const at=inBiome(b,70);
+     const beam=new THREE.Mesh(new THREE.ConeGeometry(6+r()*6,38+r()*30,12,1,true),lightMat);
+     beam.position.set(at.x,ground(at.x,at.z)+23+r()*12,at.z);
+     beam.rotation.z=.3+r()*.2;
+     add(beam);
+   }
+ }
+ function animateWildlife(now){
+  const list=wildlife.butterflies;
+  if(wildlife.left&&wildlife.right){
+   for(let i=0;i<list.length;i++){
+    const b=list[i],drift=now*.00048,beat=Math.sin(now*.016+b.phase*3);
+    const x=b.x+Math.sin(drift+b.phase)*2.4,z=b.z+Math.cos(drift*.8+b.phase)*1.8;
+    const y=b.y+Math.sin(now*.0018+b.phase)*.4;
+    dummy.position.set(x,y,z);dummy.rotation.set(0,drift+b.phase,0);
+    dummy.rotateZ(-.27-beat*.7);dummy.scale.setScalar(b.scale);dummy.updateMatrix();wildlife.left.setMatrixAt(i,dummy.matrix);
+    dummy.rotation.set(0,drift+b.phase,0);
+    dummy.rotateZ(.27+beat*.7);dummy.updateMatrix();wildlife.right.setMatrixAt(i,dummy.matrix);
+   }
+   wildlife.left.instanceMatrix.needsUpdate=true;wildlife.right.instanceMatrix.needsUpdate=true;
+  }
+  if(wildlife.petals&&wildlife.velocities){
+   const pts=wildlife.petals.geometry.getAttribute('position');
+   for(let i=0;i<pts.count;i++){
+    let x=pts.getX(i),y=pts.getY(i),z=pts.getZ(i);
+    x+=Math.sin(now*.0006+i)*.025;z+=Math.cos(now*.0004+i)*.02;y-=wildlife.velocities[i]*8;
+    if(y<ground(x,z)+.6)y=ground(x,z)+10+(i%17);
+    pts.setXYZ(i,x,y,z);
+   }
+   pts.needsUpdate=true;
+  }
+ }
  function createJourneyMemos(){
   const spots=biomes.map((b,i)=>({id:b.id,x:b.x,z:b.z,radius:i===2?39:33}));
   return spots;
@@ -347,7 +411,8 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
   ['Fleurs monumentales',giantFlora],
   ['Cascades et brume',mistAndWaterfalls],
   ['Lueurs et sanctuaires',celestialAccents],
-  ['Montagnes et architectures',mountainsAndArchitecture]
+  ['Montagnes et architectures',mountainsAndArchitecture],
+  ['Faune et pétales vivants',wildlifeAndGodrays]
  ];
  let stageIndex=0,disposed=false;
  function nextStage(){
@@ -365,6 +430,7 @@ export function createEternalRealm({scene,biomes,heightAt,mobile,forestTrees}){
    if(now-prevTick<85)return;
    prevTick=now;
    for(const shader of water)shader.uniforms.uTime.value=now*.001;
+   animateWildlife(now);
    for(let i=0;i<timed.length;i++)if(i<40){
      const obj=timed[i];
      if(obj instanceof THREE.Mesh&&obj.material?.opacity<.2)obj.position.x+=Math.sin(now*.00017+i)*.003;
