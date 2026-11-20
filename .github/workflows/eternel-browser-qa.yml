@@ -1,0 +1,38 @@
+name: "ÉTERNEL — Real Browser QA"
+on:
+  push:
+    branches:
+      - "preview/eternel-3d-biomes"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-qa:
+    name: "WebGL · Keyboard · iPhone controls"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: eternel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Compile and run ten movement tests
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run real WebGL browser tests and capture screenshots
+        run: node scripts/browser-smoke.mjs
+      - name: Upload desktop and iPhone QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eternel-3d-qa-screenshots
+          path: eternel/qa/*.png
+          if-no-files-found: warn
