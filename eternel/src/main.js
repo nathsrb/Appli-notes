@@ -377,7 +377,7 @@ function toggleCinematic(){
  ROOT.classList.toggle('cinema',cinematic);
  show('cinemaExit',cinematic);
 }
-,overlay:false,near:null,biome:0,yaw:0,pitch:-.07,position:v3(5,0,192),move:{x:0,y:0},pointer:null,frame:0,last:performance.now(),fpsAt:0,frames:0,quality:Math.min(devicePixelRatio||1,frameCap)};
+const state={playing:false,overlay:false,near:null,biome:0,yaw:0,pitch:-.07,position:v3(5,0,192),move:{x:0,y:0},pointer:null,frame:0,last:performance.now(),fpsAt:0,frames:0,quality:Math.min(devicePixelRatio||1,frameCap)};
 const pressed=new Set();
 function nearestBiome(){
  let near=biomes[0],dist=Infinity,index=0;
