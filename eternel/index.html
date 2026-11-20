@@ -16,12 +16,19 @@
  <h1>Entrez dans<br><em>le jardin miraculeux.</em></h1>
  <p>Sept biomes vivants à explorer, des paysages extraordinaires et des prières qui deviennent des lumières.</p>
  <button id="enter" class="button-primary">Entrer dans le jardin <span>↗</span></button>
- <div class="minor-note">EXPÉRIENCE EXPLORATOIRE 3D · SON DÉSACTIVÉ PAR DÉFAUT</div></div>
+ <div class="minor-note">UNIVERS EXPLORABLE · 7 TERRITOIRES · SON DÉSACTIVÉ PAR DÉFAUT</div></div>
  <div class="intro-footer">ÉTERNEL · CHAPITRE I : LA VALLÉE DE L'AUBE</div>
 </section>
 <header id="top" hidden><div class="brand"><span class="brand-icon">✧</span><div><b>ÉTERNEL</b><small>LE JARDIN DES INTERCESSEURS</small></div></div>
-<nav class="top-actions"><button id="openMap" title="Carte des biomes">⌖ <span>Carte</span></button><button id="sound" title="Activer ou désactiver l'ambiance">♫</button><button id="openCommunity" title="Espace de prière complet">✧ <span>Prières et comptes</span></button></nav></header>
+<nav class="top-actions"><button id="openMap" title="Carte des biomes">⌖ <span>Carte</span></button><button id="cinemaButton" title="Mode cinématique, touche P">◉</button><button id="fullScreenButton" title="Plein écran, touche F">⛶</button><button id="sound" title="Activer ou désactiver l'ambiance">♫</button><button id="openCommunity" title="Espace de prière complet">✧ <span>Prières et comptes</span></button></nav></header>
 <aside id="location" hidden><small id="biomeIndex">01 / 07 · VOUS DÉCOUVREZ</small><h2 id="biomeName">La Vallée de l'Aube</h2><p id="biomeSubtitle">Là où commence le voyage</p><span class="line"></span></aside>
+
+<div id="expeditionHUD" class="expedition-hud" hidden>
+ <div class="expedition-box"><small>LE GRAND VOYAGE</small><strong id="progressValue">0 / 7 BIOMES DÉCOUVERTS</strong><p id="journeyGoal">Explorez les chemins de la vallée.</p></div>
+ <button id="minimapButton" class="mini-map" aria-label="Ouvrir la carte du monde" title="Carte du monde"><canvas id="minimapCanvas" width="176" height="176"></canvas><span>CARTE DU MONDE · M</span></button>
+</div>
+<div id="discoveryToast" class="discovery-toast" hidden><small id="discoveryNumber">01 / 07 · TERRITOIRE DÉCOUVERT</small><strong id="discoveryName">La Vallée de l'Aube</strong><span>✧</span></div>
+<button id="cinemaExit" hidden aria-label="Quitter le mode cinématique">QUITTER LE MODE CINÉMATIQUE · P</button>
 <div id="liveStatus" class="live-status" hidden>Les prières publiques se synchronisent…</div>
 <div id="near" class="near" hidden><span>✧</span><div><small id="nearCategory">UN LIEU À DÉCOUVRIR</small><b id="nearName">Sanctuaire</b></div><button id="nearAction">Découvrir ↗</button></div>
 <div id="touch" hidden><div id="joystick" aria-label="Joystick de déplacement" role="group"><div id="stick"></div></div><button id="touchAction" aria-label="Interagir">✧</button></div>

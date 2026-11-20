@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createEternalRealm} from './world-expansion.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import '../style.css';
 const ROOT=document.getElementById('root'),canvas=document.getElementById('scene');
@@ -314,7 +315,69 @@ async function loadPrayers(){
   setText('liveStatus',liveError);show('liveStatus',true);
  }
 }
-const state={playing:false,overlay:false,near:null,biome:0,yaw:0,pitch:-.07,position:v3(5,0,192),move:{x:0,y:0},pointer:null,frame:0,last:performance.now(),fpsAt:0,frames:0,quality:Math.min(devicePixelRatio||1,frameCap)};
+
+/* Le monde évolue derrière la vue, par étapes pour conserver un démarrage rapide. */
+const expeditionScene=createEternalRealm({scene,biomes,heightAt,mobile,forestTrees});
+const VISIT_KEY='eternel-3d-biome-discoveries-v1';
+const discovered=new Set();
+try{const old=JSON.parse(localStorage.getItem(VISIT_KEY)||'[]');if(Array.isArray(old))old.filter(x=>biomes.some(b=>b.id===x)).forEach(x=>discovered.add(x));}catch{}
+let noticeTimeout=0;
+function updateExpeditionHUD(){
+ setText('progressValue',discovered.size+' / 7 BIOMES DÉCOUVERTS');
+ const upcoming=biomes.find(b=>!discovered.has(b.id));
+ if(!upcoming)setText('journeyGoal','Les sept territoires sont découverts · Continuez librement.');
+ else {
+  const dist=Math.round(Math.hypot(state.position.x-upcoming.x,state.position.z-upcoming.z));
+  setText('journeyGoal','À DÉCOUVRIR · '+upcoming.name+' · '+dist+' m');
+ }
+}
+function markBiome(index,announce=true){
+ const biome=biomes[index];
+ if(!biome||discovered.has(biome.id))return;
+ discovered.add(biome.id);
+ try{localStorage.setItem(VISIT_KEY,JSON.stringify([...discovered]));}catch{}
+ updateExpeditionHUD();
+ if(announce){
+  setText('discoveryNumber',String(discovered.size).padStart(2,'0')+' / 07 · TERRITOIRE DÉCOUVERT');
+  setText('discoveryName',biome.name);
+  show('discoveryToast',true);
+  clearTimeout(noticeTimeout);noticeTimeout=setTimeout(()=>show('discoveryToast',false),3700);
+ }
+}
+const minimap=document.getElementById('minimapCanvas');
+const miniCtx=minimap?.getContext('2d');
+function updateMinimap(){
+ if(!miniCtx||!minimap)return;
+ const w=minimap.width,h=minimap.height;
+ miniCtx.clearRect(0,0,w,h);
+ const convert=(p)=>({x:clamp((p.x+305)/610,0,1)*w,y:clamp((p.z+345)/610,0,1)*h});
+ miniCtx.fillStyle='rgba(13,47,39,.86)';miniCtx.fillRect(0,0,w,h);
+ const grd=miniCtx.createRadialGradient(w/2,h/2,0,w/2,h/2,w/1.6);grd.addColorStop(0,'rgba(143,190,147,.25)');grd.addColorStop(1,'rgba(35,90,66,.09)');miniCtx.fillStyle=grd;miniCtx.fillRect(0,0,w,h);
+ const ways=[[0,1],[1,2],[2,3],[2,4],[2,5],[4,6],[5,6]];
+ miniCtx.lineWidth=1.5;miniCtx.strokeStyle='rgba(239,217,163,.45)';
+ for(const [i,j]of ways){
+  const a=convert(biomes[i]),b=convert(biomes[j]);
+  miniCtx.beginPath();miniCtx.moveTo(a.x,a.y);miniCtx.lineTo(b.x,b.y);miniCtx.stroke();
+ }
+ biomes.forEach(b=>{
+  const p=convert(b);
+  miniCtx.beginPath();miniCtx.arc(p.x,p.y,discovered.has(b.id)?4.5:3.5,0,Math.PI*2);
+  miniCtx.fillStyle=discovered.has(b.id)?'#ffdf97':'#89ac9d';miniCtx.fill();
+  miniCtx.strokeStyle='#194a40';miniCtx.lineWidth=1.5;miniCtx.stroke();
+ });
+ const player=convert(state.position);
+ miniCtx.save();miniCtx.translate(player.x,player.y);miniCtx.rotate(-state.yaw);
+ miniCtx.beginPath();miniCtx.moveTo(0,-10);miniCtx.lineTo(-6,7);miniCtx.lineTo(0,3);miniCtx.lineTo(6,7);miniCtx.closePath();
+ miniCtx.fillStyle='#fffef0';miniCtx.fill();
+ miniCtx.restore();
+}
+let cinematic=false;
+function toggleCinematic(){
+ cinematic=!cinematic;
+ ROOT.classList.toggle('cinema',cinematic);
+ show('cinemaExit',cinematic);
+}
+,overlay:false,near:null,biome:0,yaw:0,pitch:-.07,position:v3(5,0,192),move:{x:0,y:0},pointer:null,frame:0,last:performance.now(),fpsAt:0,frames:0,quality:Math.min(devicePixelRatio||1,frameCap)};
 const pressed=new Set();
 function nearestBiome(){
  let near=biomes[0],dist=Infinity,index=0;
@@ -323,6 +386,7 @@ function nearestBiome(){
 }
 function updateBiome(){
  const n=nearestBiome();
+ if(n.dist<43)markBiome(n.index);
  if(n.index===state.biome)return;
  state.biome=n.index;
  setText('biomeIndex',String(n.index+1).padStart(2,'0')+' / 07 · VOUS DÉCOUVREZ');
@@ -366,7 +430,7 @@ function openMap(){
  const cont=el('mapList');cont.replaceChildren();
  biomes.forEach((b,i)=>{
   const btn=document.createElement('button');btn.type='button';
-  const small=document.createElement('small');small.textContent=String(i+1).padStart(2,'0')+' / 07';
+  const small=document.createElement('small');small.textContent=String(i+1).padStart(2,'0')+' / 07 · '+(discovered.has(b.id)?'DÉCOUVERT':'À EXPLORER');
   const h=document.createElement('strong');h.textContent=b.name;
   const cap=document.createElement('span');cap.textContent=b.caption;
   btn.append(small,h,cap);
@@ -382,11 +446,19 @@ function openCommunity(){show('communityOverlay',true);state.overlay=true;}
 function closeOverlay(id){show(id,false);state.overlay=false;canvas.focus();}
 el('enter').addEventListener('click',()=>{
  state.playing=true;show('intro',false);
- ['top','location','hints','liveStatus'].forEach(id=>show(id,true));
+ ['top','location','hints','liveStatus','expeditionHUD'].forEach(id=>show(id,true));
+ markBiome(0,false);updateExpeditionHUD();updateMinimap();
  if(mobile)show('touch',true);
  updateBiome();canvas.focus();
 });
 el('openMap').addEventListener('click',openMap);
+el('minimapButton').addEventListener('click',openMap);
+el('cinemaButton').addEventListener('click',toggleCinematic);
+el('cinemaExit').addEventListener('click',toggleCinematic);
+el('fullScreenButton').addEventListener('click',()=>{
+ if(document.fullscreenElement){void document.exitFullscreen?.();}
+ else{const p=ROOT.requestFullscreen?.();if(p?.catch)p.catch(()=>{});}
+});
 el('closeMap').addEventListener('click',()=>closeOverlay('mapOverlay'));
 el('nearAction').addEventListener('click',()=>interactWith(state.near));
 el('touchAction').addEventListener('click',()=>interactWith(state.near));
@@ -403,6 +475,8 @@ document.addEventListener('keydown',e=>{
  pressed.add(key);if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();
  if(key==='e'&&!e.repeat&&state.playing&&!state.overlay)interactWith(state.near);
  if(key==='m'&&!e.repeat&&state.playing)openMap();
+ if(key==='p'&&!e.repeat&&state.playing)toggleCinematic();
+ if(key==='f'&&!e.repeat&&state.playing){if(document.fullscreenElement)void document.exitFullscreen?.();else ROOT.requestFullscreen?.().catch?.(()=>{});}
 });document.addEventListener('keyup',e=>pressed.delete(e.key.toLowerCase()));
 window.addEventListener('blur',()=>pressed.clear());
 let dragging=false,px=0,py=0,moved=false,downPointer=-1;
@@ -479,6 +553,9 @@ function render(now){
   seedLights.forEach((g,i)=>{g.rotation.y=now*.00019+(i*.8);g.children[1].scale.setScalar(1+.13*Math.sin(now*.002+i));});
   riverMat.roughness=.15+.06*Math.sin(now*.0008);
  }
+ expeditionScene.update(now,state.position);
+ if(state.frame%20===0){updateExpeditionHUD();updateMinimap();}
+ sun.intensity=3.0+.23*Math.sin(now*.00008);
  renderer.render(scene,camera);
  state.frame++;lastFrames++;
  if(now-statsTimer>2700){
