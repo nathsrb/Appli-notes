@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 const P=Math.PI,TAU=P*2;
 const random=(seed)=>()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
@@ -14,6 +15,33 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
  const tealGlass=new THREE.MeshPhysicalMaterial({color:'#91dfdd',metalness:.1,roughness:.20,transparent:true,opacity:.74,side:THREE.DoubleSide,emissive:'#225855',emissiveIntensity:.24});
  const glow=new THREE.MeshBasicMaterial({color:'#ffe7ac',transparent:true,opacity:.9});
  const add=(group,obj)=>{group.add(obj);return obj;};
+ // Static architectural elements share a handful of PBR materials. Batch meshes
+ // by material to keep most structures below 8 draw calls instead of hundreds.
+ function batchArchitecture(group){
+  group.updateWorldMatrix(true,true);
+  const rootInv=group.matrixWorld.clone().invert();
+  const buckets=new Map();
+  group.traverse(node=>{
+   if(!node.isMesh||Array.isArray(node.material))return;
+   const localTransform=new THREE.Matrix4().multiplyMatrices(rootInv,node.matrixWorld);
+   const geom=node.geometry.clone();geom.applyMatrix4(localTransform);
+   if(!buckets.has(node.material))buckets.set(node.material,[]);
+   buckets.get(node.material).push(geom);
+  });
+  group.clear();
+  for(const [material,geos]of buckets){
+   const merged=geos.length===1?geos[0]:mergeGeometries(geos,false);
+   if(merged){
+    group.add(new THREE.Mesh(merged,material));
+    if(geos.length>1)geos.forEach(g=>g.dispose());
+   }else{
+    // Keep a complete scene if one material contains incompatible attributes.
+    geos.forEach(geom=>group.add(new THREE.Mesh(geom,material)));
+   }
+  }
+  return group;
+ }
+
  const mesh=(geom,mat,x,y,z)=>{const obj=new THREE.Mesh(geom,mat);obj.position.set(x,y,z);return obj;};
  function standingColumn(group,x,y,z,h,material=stone){
   add(group,mesh(new THREE.CylinderGeometry(.42,.56,h,12),material,x,y+h/2,z));
@@ -85,7 +113,7 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
    curtain.rotation.y=s*.30;
   }
   moving.push(waterfallMat);
-  scene.add(g);groups.push(g);
+  batchArchitecture(g);scene.add(g);groups.push(g);
  }
  function buildHouseOfTheWord(){
   const zone=biomes[6],g=new THREE.Group(),y=heightAt(zone.x,zone.z);
@@ -111,7 +139,7 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
    const z=18-i*1.8;
    add(g,mesh(new THREE.BoxGeometry(18,.26,1.65),stone,0,.10-i*.05,z));
   }
-  scene.add(g);groups.push(g);
+  batchArchitecture(g);scene.add(g);groups.push(g);
  }
  function buildTestimonyGazebo(){
   const zone=biomes[4],g=new THREE.Group();
@@ -126,7 +154,7 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
   roof.position.y=10.7;g.add(roof);
   const crown=new THREE.Mesh(new THREE.SphereGeometry(6.7,26,14,0,TAU,0,P/2),glass);
   crown.position.y=10.95;g.add(crown);
-  scene.add(g);groups.push(g);
+  batchArchitecture(g);scene.add(g);groups.push(g);
  }
  function buildAllianceThreads(){
   // These golden filaments are purely atmospheric decoration, NOT private alliances.
@@ -177,9 +205,7 @@ export function createSanctuaries({scene,biomes,heightAt,mobile}){
     add(g,mesh(new THREE.CylinderGeometry(.12,.15,2.0,6),ivory,-10+i*2.25,1.0,s*3.4));
    }
   }
-  scene.add(g);groups.push(g);
- }
- setTimeout(()=>{try{buildDawnBridge();buildTestimonyGazebo();}catch(e){console.error('ÉTERNEL architecture A',e);}},mobile?1750:850);
+  batchArchitecture(floating);scene.add(floating);groups.push(floating);()=>{try{buildDawnBridge();buildTestimonyGazebo();}catch(e){console.error('ÉTERNEL architecture A',e);}},mobile?1750:850);
  setTimeout(()=>{try{buildMountainCitadel();buildHouseOfTheWord();}catch(e){console.error('ÉTERNEL architecture B',e);}},mobile?2800:1700);
  setTimeout(()=>{try{buildAllianceThreads();buildFloatingIslands();}catch(e){console.error('ÉTERNEL architecture C',e);}},mobile?4000:2600);
  return {
