@@ -31,3 +31,34 @@
 .art-status{position:absolute;right:clamp(10px,3vw,34px);bottom:clamp(38px,5vh,65px);z-index:9;padding:9px 13px;border:1px solid #ffe6ae7e;border-radius:18px;background:#153b33a9;color:#fff3d3;font-size:9px;letter-spacing:.07em;backdrop-filter:blur(10px);pointer-events:none}
 .intro-shade{background:linear-gradient(90deg,#092b27c9,#163b3448 48%,#18342b94),linear-gradient(0deg,#102b2dc2,transparent 63%)}
 @media(max-width:700px){.art-status{bottom:14px;right:8px;font-size:8px;max-width:160px;text-align:right}}
+
+/* Real game controls: keyboard or tactile D-pad, camera and movement telemetry. */
+#playerInfo{position:absolute;z-index:11;bottom:max(42px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:18px;background:#193f39c2;border:1px solid #e1cda064;backdrop-filter:blur(10px);color:#fff1db;box-shadow:0 15px 36px #112d2957;white-space:nowrap;font-size:10px;letter-spacing:.09em}
+#playerInfo span:first-child{color:#f9d79e;font-weight:700}#playerInfo strong{font-size:11px;font-weight:700}#playerInfo span:not(:first-child){color:#d5e6df}#playerInfo b{color:#eecb8d}#playerInfo small{font-size:9px;color:#cbdccf}
+#controlGuide{position:absolute;z-index:18;left:50%;top:65%;transform:translateX(-50%);background:#163c35dc;border:1px solid #e8d09b8f;border-radius:14px;padding:13px 18px;color:#fff8e8;box-shadow:0 14px 33px #092d2869;text-align:center;pointer-events:none;display:grid;gap:7px;width:min(460px,88vw)}
+#controlGuide strong{font:500 25px 'Cormorant Garamond',serif}#controlGuide span{font-size:11px;line-height:1.5}
+#desktopControls{position:absolute;left:24px;bottom:70px;z-index:12;display:flex;flex-direction:column;align-items:center;gap:5px}
+#desktopControls button{width:43px;height:43px;border-radius:11px;border:1px solid #ffe2b4a0;color:#fef8eb;background:#214b3dbb;font-size:18px;touch-action:none;backdrop-filter:blur(8px);user-select:none;box-shadow:0 4px 12px #15322a55}
+#desktopControls button:active{background:#a3824d}
+.desktop-controls-row{display:flex;gap:5px}
+.touch-right{display:flex;align-items:center;gap:15px;pointer-events:auto}
+#runControl{pointer-events:auto;border:1px solid #fff1cdab;border-radius:48px;padding:16px 15px;background:#274e42c9;color:#fdf2de;font-size:11px;font-weight:700;letter-spacing:.08em;touch-action:none;user-select:none}
+#runControl:active{background:#a68d57}
+.cinema #desktopControls,.cinema #playerInfo,.cinema #controlGuide{display:none!important}
+@media(max-width:900px){
+ #desktopControls{display:none!important}
+ #playerInfo{bottom:8px;left:50%;gap:7px;padding:7px 9px;font-size:8px;border-radius:10px}
+ #playerInfo strong{font-size:9px}
+ #playerInfo small{display:none}
+ #hints{display:none!important}
+ #controlGuide{top:62%;padding:9px 12px}
+ #controlGuide span{font-size:9px}
+ #runControl{padding:13px 10px;font-size:10px}
+ .touch-right{gap:8px}
+}
+@media(max-width:520px){
+ #playerInfo span:first-child{display:none}
+ #playerInfo{font-size:8px}
+ #playerInfo strong{font-size:9px}
+ #controlGuide{top:51%}
+}

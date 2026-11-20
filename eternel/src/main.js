@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {createEternalRealm} from './world-expansion.js';
 import {buildReferenceWorld} from './reference-world.js';
+import {getInputAxes,integrateMovement,getCompassDirection} from './movement.js';
+import {createExplorerAvatar} from './explorer-avatar.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import '../style.css';
 const ROOT=document.getElementById('root'),canvas=document.getElementById('scene');
@@ -344,6 +346,23 @@ async function loadPrayers(){
 
 /* Le monde évolue derrière la vue, par étapes pour conserver un démarrage rapide. */
 const expeditionScene=createEternalRealm({scene,biomes,heightAt,mobile,forestTrees});
+const voyager=createExplorerAvatar(scene);voyager.show(false);
+let cameraMode='third';
+const blockers=[{x:-12,z:-35,radius:7.1}];
+const smoothFollow=new THREE.Vector3(5,8,199);
+let traveledMeters=0;
+let sprintTouch=false;
+const warmUpHelp=()=>{
+ show('controlGuide',true);
+ setTimeout(()=>show('controlGuide',false),10000);
+};
+function cameraModeToggle(){
+ cameraMode=cameraMode==='third'?'first':'third';
+ setText('cameraModeLabel',cameraMode==='third'?'3ᵉ personne':'1ʳᵉ personne');
+ setText('cameraButton',cameraMode==='third'?'◉ 3D':'◎ 1P');
+ voyager.show(cameraMode==='third');
+}
+
 const referenceScene=buildReferenceWorld({
  scene,biomes,heightAt,mobile,
  onStatus:(loaded,total)=>{
@@ -506,7 +525,9 @@ function openCommunity(){show('communityOverlay',true);state.overlay=true;}
 function closeOverlay(id){show(id,false);state.overlay=false;canvas.focus();}
 el('enter').addEventListener('click',()=>{
  state.playing=true;show('intro',false);
- ['top','location','hints','liveStatus','expeditionHUD'].forEach(id=>show(id,true));
+ ['top','location','hints','liveStatus','expeditionHUD','playerInfo'].forEach(id=>show(id,true));
+ voyager.show(cameraMode==='third');warmUpHelp();
+ if(!mobile)show('desktopControls',true);
  markBiome(0,false);updateExpeditionHUD();updateMinimap();
  if(mobile)show('touch',true);
  updateBiome();canvas.focus();
@@ -514,6 +535,19 @@ el('enter').addEventListener('click',()=>{
 el('openMap').addEventListener('click',openMap);
 el('minimapButton').addEventListener('click',openMap);
 el('cinemaButton').addEventListener('click',toggleCinematic);
+el('cameraButton').addEventListener('click',cameraModeToggle);
+el('runControl').addEventListener('pointerdown',e=>{e.preventDefault();sprintTouch=true;el('runControl').setPointerCapture(e.pointerId);});
+for(const name of ['pointerup','pointercancel','lostpointercapture'])el('runControl').addEventListener(name,()=>sprintTouch=false);
+for(const button of document.querySelectorAll('[data-move]')){
+ const key=button.dataset.move;
+ const release=()=>pressed.delete(key);
+ button.addEventListener('pointerdown',event=>{
+  event.preventDefault();pressed.add(key);
+  try{button.setPointerCapture(event.pointerId)}catch{}
+ });
+ for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,release);
+}
+
 el('lightButton').addEventListener('click',nextLighting);
 el('cinemaExit').addEventListener('click',toggleCinematic);
 el('fullScreenButton').addEventListener('click',()=>{
@@ -536,6 +570,7 @@ document.addEventListener('keydown',e=>{
  pressed.add(key);if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();
  if(key==='e'&&!e.repeat&&state.playing&&!state.overlay)interactWith(state.near);
  if(key==='m'&&!e.repeat&&state.playing)openMap();
+ if(key==='c'&&!e.repeat&&state.playing)cameraModeToggle();
  if(key==='p'&&!e.repeat&&state.playing)toggleCinematic();
  if(key==='f'&&!e.repeat&&state.playing){if(document.fullscreenElement)void document.exitFullscreen?.();else ROOT.requestFullscreen?.().catch?.(()=>{});}
 });document.addEventListener('keyup',e=>pressed.delete(e.key.toLowerCase()));
@@ -592,37 +627,45 @@ function render(now){
  requestAnimationFrame(render);
  const dt=Math.min(.05,(now-state.last)/1000);state.last=now;
  if(state.playing&&!state.overlay){
-  const f=Number(pressed.has('w')||pressed.has('z')||pressed.has('arrowup'))-Number(pressed.has('s')||pressed.has('arrowdown'))-state.move.y;
-  const s=Number(pressed.has('d'))-Number(pressed.has('a')||pressed.has('q'))+state.move.x;
-  const len=Math.max(1,Math.hypot(f,s)),vel=(pressed.has('shift')?20:speedNormal)*dt;
-  const nx=state.position.x+(Math.sin(state.yaw)*f+Math.cos(state.y)*s)/len*vel;
-  const nz=state.position.z+(-Math.cos(state.y)*f+Math.sin(state.y)*s)/len*vel;
-  // Keep the player responsive even when dense vegetation overlaps a path.
-  // Test axes independently to allow sliding around trunks instead of freezing.
-  const canWalk=(x,z)=>{
-   if(x<=-287||x>=287||z<=-315||z>=252||Math.hypot(x+12,z+35)<=5)return false;
-   for(const t of forestTrees){
-    const radius=t.hero?5:Math.min(1.55,Math.max(.48,.52*t.scale));
-    if(distance(x,z,t)<radius)return false;
-   }
-   return true;
-  };
-  let px=state.position.x,pz=state.position.z;
-  if(canWalk(nx,pz))px=nx;
-  if(canWalk(px,nz))pz=nz;
-  // Recover automatically from scenery that was spawned around the camera.
-  if(px===state.position.x&&pz===state.position.z&&
-     (Math.abs(f)+Math.abs(s)>0.1)){
-    const touching=forestTrees.some(t=>distance(px,pz,t)<Math.min(1.55,Math.max(.48,.52*t.scale)));
-    if(touching){px=clamp(nx,-286,286);pz=clamp(nz,-314,251);}
-  }
-  state.position.set(px,0,pz);
-  const turn=Number(pressed.has('arrowright'))-Number(pressed.has('arrowleft'));state.yaw-=turn*dt*1.2;
+  let gamepad=null;
+  try{gamepad=navigator.getGamepads?.()?.find(p=>p?.connected)||null;}catch{}
+  const input=getInputAxes(pressed,state.move,gamepad);
+  const sprint=pressed.has('shift')||sprintTouch||(gamepad?.buttons?.[0]?.pressed||false);
+  const step=integrateMovement(state.position,state.yaw,input,dt,{sprint,obstacles:blockers});
+  state.position.x=step.x;state.position.z=step.z;
+  state.walked=(state.walked||0)+step.traveled;
+  state.moving=step.moving;state.sprinting=sprint;
+  const turn=Number(pressed.has('arrowright'))-Number(pressed.has('arrowleft'));
+  const rx=gamepad?.axes?.[2]||0,ry=gamepad?.axes?.[3]||0;
+  state.yaw-=turn*dt*1.3+(Math.abs(rx)>.16?rx*dt*1.6:0);
+  if(Math.abs(ry)>.16)state.pitch=clamp(state.pitch-ry*dt*.9,-.62,.58);
   updateBiome();
-  if(state.frame%30===0)updateNear();
+  if(state.frame%18===0){
+   updateNear();
+   setText('walkedMeters',Math.floor(state.walked)+' M PARCOURUS');
+   setText('movementSpeed',step.moving?(sprint?'COURSE':'MARCHE'):'IMMOBILE');
+   setText('playerCompass',getCompassDirection(state.yaw));
+  }
  }
- camera.position.set(state.position.x,heightAt(state.position.x,state.position.z)+camHeight+Math.sin(now*.004)*.015,state.position.z);
- camera.rotation.order='YXZ';camera.rotation.y=state.yaw;camera.rotation.x=state.pitch;
+ const groundY=heightAt(state.position.x,state.position.z);
+ voyager.update({
+  x:state.position.x,y:groundY,z:state.position.z,
+  yaw:state.yaw,moving:Boolean(state.moving),sprint:Boolean(state.sprinting),time:now*.001
+ });
+ if(cameraMode==='third'){
+  const back=8.5*Math.cos(state.pitch);
+  const targetX=state.position.x-Math.sin(state.yaw)*back;
+  const targetZ=state.position.z+Math.cos(state.yaw)*back;
+  const desired=new THREE.Vector3(targetX,groundY+5.45+Math.sin(state.pitch)*6.5,targetZ);
+  const follow=1-Math.exp(-Math.min(dt,.045)*8.8);
+  smoothFollow.lerp(desired,follow);
+  camera.position.copy(smoothFollow);
+  const focus=new THREE.Vector3(state.position.x,groundY+2.15,state.position.z);
+  camera.lookAt(focus);
+ }else{
+  camera.position.set(state.position.x,groundY+camHeight+Math.sin(now*.004)*.015,state.position.z);
+  camera.rotation.order='YXZ';camera.rotation.y=state.yaw;camera.rotation.x=state.pitch;
+ }
  sky.position.copy(camera.position);
  if(state.frame%2===0){
   motes.rotation.y=Math.sin(now*.00008)*.015;

@@ -20,7 +20,7 @@
  <div class="intro-footer">ÉTERNEL · CHAPITRE I : LA VALLÉE DE L'AUBE</div>
 </section>
 <header id="top" hidden><div class="brand"><span class="brand-icon">✧</span><div><b>ÉTERNEL</b><small>LE JARDIN DES INTERCESSEURS</small></div></div>
-<nav class="top-actions"><button id="openMap" title="Carte des biomes">⌖ <span>Carte</span></button><button id="cinemaButton" title="Mode cinématique, touche P">◉</button><button id="lightButton" title="Lumière : Aube · changer">☼</button><button id="fullScreenButton" title="Plein écran, touche F">⛶</button><button id="sound" title="Activer ou désactiver l'ambiance">♫</button><button id="openCommunity" title="Espace de prière complet">✧ <span>Prières et comptes</span></button></nav></header>
+<nav class="top-actions"><button id="openMap" title="Carte des biomes">⌖ <span>Carte</span></button><button id="cameraButton" title="Changer de caméra, touche C">◉ 3D</button><button id="cinemaButton" title="Mode cinématique, touche P">◉</button><button id="lightButton" title="Lumière : Aube · changer">☼</button><button id="fullScreenButton" title="Plein écran, touche F">⛶</button><button id="sound" title="Activer ou désactiver l'ambiance">♫</button><button id="openCommunity" title="Espace de prière complet">✧ <span>Prières et comptes</span></button></nav></header>
 <aside id="location" hidden><small id="biomeIndex">01 / 07 · VOUS DÉCOUVREZ</small><h2 id="biomeName">La Vallée de l'Aube</h2><p id="biomeSubtitle">Là où commence le voyage</p><div class="world-climate">LUMIÈRE <strong id="lightPhaseName">AUBE</strong></div><span class="line"></span></aside>
 
 <div id="expeditionHUD" class="expedition-hud" hidden>
@@ -32,7 +32,13 @@
 <div id="artStatus" class="art-status" hidden aria-live="polite">Préparation des paysages...</div>
 <div id="liveStatus" class="live-status" hidden>Les prières publiques se synchronisent…</div>
 <div id="near" class="near" hidden><span>✧</span><div><small id="nearCategory">UN LIEU À DÉCOUVRIR</small><b id="nearName">Sanctuaire</b></div><button id="nearAction">Découvrir ↗</button></div>
-<div id="touch" hidden><div id="joystick" aria-label="Joystick de déplacement" role="group"><div id="stick"></div></div><button id="touchAction" aria-label="Interagir">✧</button></div>
+<div id="touch" hidden><div id="joystick" aria-label="Joystick de déplacement" role="group"><div id="stick"></div></div><div class="touch-right"><button id="runControl" aria-label="Maintenir pour courir">COURIR</button><button id="touchAction" aria-label="Interagir">✧</button></div></div>
+<div id="desktopControls" hidden aria-label="Commandes de déplacement à la souris">
+ <button data-move="w" aria-label="Avancer">↑</button>
+ <div class="desktop-controls-row"><button data-move="q" aria-label="Aller à gauche">←</button><button data-move="s" aria-label="Reculer">↓</button><button data-move="d" aria-label="Aller à droite">→</button></div>
+</div>
+<div id="playerInfo" hidden><span>✧ EXPLORATION</span><strong id="walkedMeters">0 M PARCOURUS</strong><span id="movementSpeed">IMMOBILE</span><b id="playerCompass">N</b><small id="cameraModeLabel">3ᵉ personne</small></div>
+<div id="controlGuide" hidden><strong>Bienvenue dans ÉTERNEL</strong><span>Avancez avec Z ou W · Orientez la caméra en glissant · Appuyez sur C pour changer de vue.</span></div>
 <footer id="hints" hidden><span>GLISSER POUR REGARDER · ZQSD/WASD POUR MARCHER · E POUR INTERAGIR</span><span id="fps">QUALITÉ ADAPTATIVE</span></footer>
 <section class="overlay" id="mapOverlay" hidden><div class="panel atlas"><button id="closeMap" class="close" title="Fermer">×</button><div class="panel-kicker">ATLAS D'ÉTERNEL</div><h2>Les sept biomes</h2><p>Le monde s'explore à pied. Choisissez une destination pour voyager rapidement.</p><div class="atlas-grid" id="mapList"></div><div class="small-print">Prévisualisation évolutive : les biomes sont représentés par des scènes 3D construites spécialement pour cette exploration.</div></div></section>
 <section class="overlay" id="detailOverlay" hidden><div class="panel detail"><button id="closeDetail" class="close" title="Fermer">×</button><span class="detail-emblem">✧</span><div class="panel-kicker" id="detailType">INTENTION PUBLIQUE</div><h2 id="detailName"></h2><div class="detail-body" id="detailBody"></div><div id="detailMeta" class="small-print"></div><div class="panel-actions"><button id="resume" class="button-primary">Reprendre la marche</button><button id="gotoCommunity" class="button-secondary">Intercéder dans ÉTERNEL ↗</button></div></div></section>
