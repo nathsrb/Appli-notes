@@ -364,6 +364,34 @@ function cameraModeToggle(){
  voyager.show(cameraMode==='third');
 }
 
+
+const tourRoute=[[5,195,28],[6,151,26],[35,95,32],[45,40,41],[-12,-35,85],
+ [-132,-54,43],[143,-45,45],[-30,-245,125],[153,-167,78]]
+ .map(([x,z,up])=>new THREE.Vector3(x,heightAt(x,z)+up,z));
+const tourCurve=new THREE.CatmullRomCurve3(tourRoute,false,'catmullrom',.3);
+let tour=null;
+function stopTour(){
+ if(!tour)return;
+ tour=null;
+ show('tourExit',false);
+ const b=biomes[state.biome];
+ state.position.set(b.x+7,0,b.z+19);
+ state.moving=false;
+ voyager.show(cameraMode==='third');
+ if(mobile)show('touch',true);else show('desktopControls',true);
+ canvas.focus();
+}
+function startTour(){
+ if(tour){stopTour();return;}
+ if(!state.playing)el('enter').click();
+ state.overlay=false;
+ ['mapOverlay','detailOverlay','communityOverlay'].forEach(id=>show(id,false));
+ tour={begin:performance.now(),duration:74000};
+ show('tourExit',true);show('controlGuide',false);
+ show('touch',false);show('desktopControls',false);voyager.show(false);
+ setText('tourProgress','SURVOL DES SEPT BIOMES');
+}
+
 const referenceScene=buildReferenceWorld({
  scene,biomes,heightAt,mobile,
  onStatus:(loaded,total)=>{
@@ -466,7 +494,7 @@ function nearestBiome(){
 }
 function updateBiome(){
  const n=nearestBiome();
- if(n.dist<43)markBiome(n.index);
+ if(n.dist<43&&!tour)markBiome(n.index);
  if(n.index===state.biome)return;
  state.biome=n.index;
  ambient?.setBiome(n.b.id);
@@ -538,6 +566,10 @@ el('openMap').addEventListener('click',openMap);
 el('minimapButton').addEventListener('click',openMap);
 el('cinemaButton').addEventListener('click',toggleCinematic);
 el('cameraButton').addEventListener('click',cameraModeToggle);
+el('tourButton').addEventListener('click',startTour);
+el('tourStart').addEventListener('click',startTour);
+el('tourExit').addEventListener('click',stopTour);
+el('resetExplorer').addEventListener('click',()=>{stopTour();state.position.set(5,0,192);state.yaw=0;state.pitch=-.06;canvas.focus();});
 el('runControl').addEventListener('pointerdown',e=>{e.preventDefault();sprintTouch=true;el('runControl').setPointerCapture(e.pointerId);});
 for(const name of ['pointerup','pointercancel','lostpointercapture'])el('runControl').addEventListener(name,()=>sprintTouch=false);
 for(const button of document.querySelectorAll('[data-move]')){
@@ -565,7 +597,7 @@ el('gotoCommunity').addEventListener('click',openCommunity);
 el('openCommunity').addEventListener('click',openCommunity);
 el('closeCommunity').addEventListener('click',()=>closeOverlay('communityOverlay'));
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'){['mapOverlay','detailOverlay','communityOverlay'].forEach(id=>show(id,false));state.overlay=false;return;}
+ if(e.key==='Escape'){if(tour)stopTour();['mapOverlay','detailOverlay','communityOverlay'].forEach(id=>show(id,false));state.overlay=false;return;}
  const active=document.activeElement;
  if(active&&['INPUT','TEXTAREA','SELECT'].includes(active.tagName))return;
  const key=e.key.toLowerCase();
@@ -573,6 +605,7 @@ document.addEventListener('keydown',e=>{
  if(key==='e'&&!e.repeat&&state.playing&&!state.overlay)interactWith(state.near);
  if(key==='m'&&!e.repeat&&state.playing)openMap();
  if(key==='c'&&!e.repeat&&state.playing)cameraModeToggle();
+ if(key==='v'&&!e.repeat)startTour();
  if(key==='p'&&!e.repeat&&state.playing)toggleCinematic();
  if(key==='f'&&!e.repeat&&state.playing){if(document.fullscreenElement)void document.exitFullscreen?.();else ROOT.requestFullscreen?.().catch?.(()=>{});}
 });document.addEventListener('keyup',e=>pressed.delete(e.key.toLowerCase()));
@@ -632,7 +665,7 @@ let lastFrames=0,statsTimer=performance.now();
 function render(now){
  requestAnimationFrame(render);
  const dt=Math.min(.05,(now-state.last)/1000);state.last=now;
- if(state.playing&&!state.overlay){
+ if(state.playing&&!state.overlay&&!tour){
   let gamepad=null;
   try{gamepad=navigator.getGamepads?.()?.find(p=>p?.connected)||null;}catch{}
   const input=getInputAxes(pressed,state.move,gamepad);
@@ -658,7 +691,16 @@ function render(now){
   x:state.position.x,y:groundY,z:state.position.z,
   yaw:state.yaw,moving:Boolean(state.moving),sprint:Boolean(state.sprinting),time:now*.001
  });
- if(cameraMode==='third'){
+ if(tour){
+  const t=Math.min(1,(now-tour.begin)/tour.duration);
+  if(t>=1)stopTour();
+  else{
+   const p=tourCurve.getPoint(t),look=tourCurve.getPoint(Math.min(1,t+.014));
+   camera.position.copy(p);camera.lookAt(look.x,look.y-10,look.z);
+   state.position.x=p.x;state.position.z=p.z;
+   if(state.frame%20===0){updateBiome();setText('tourProgress',Math.round(t*100)+' % · '+biomes[state.biome].name.toUpperCase());}
+  }
+ }else if(cameraMode==='third'){
   const back=8.5*Math.cos(state.pitch);
   const targetX=state.position.x-Math.sin(state.yaw)*back;
   const targetZ=state.position.z+Math.cos(state.yaw)*back;
